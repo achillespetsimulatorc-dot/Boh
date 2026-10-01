@@ -64,24 +64,25 @@
   .info-body p { margin: 0 0 8px; }
   .info-body p:last-child { margin: 0; }
   .info-body b { font-weight: 500; }
-  .panel.graph { width: min(560px, calc(100vw - 20px)); padding: 8px 10px 10px; box-sizing: border-box; }
+  .panel.graph { width: min(560px, calc(100vw - 20px)); padding: 6px 8px 7px; box-sizing: border-box; max-height: none; overflow: visible; }
   .panel.graph canvas { display: block; position: static; width: 100%; height: 220px; touch-action: none; }
-  .panel.graph { max-height: none; overflow: visible; }
-  .panel.graph p { margin: 4px 2px 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
-  .gbar { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }
-  .panel.demo { width: min(560px, calc(100vw - 20px)); padding: 10px 12px; box-sizing: border-box; }
-  .panel.demo p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--ink); min-height: 54px; }
-  .panel.demo input[type=range] { width: 100%; margin: 0 0 8px; accent-color: #6aa4ff; }
-  .demobtns { display: flex; gap: 6px; }
-  .demobtns .gtoggle { flex: 1; }
-  #sphereChip { pointer-events: auto; margin-top: 4px; border: 1px solid #3d5378; background: #1a2333; color: #9cc1ff;
+  .panel.graph p { margin: 3px 2px 0; font-size: 11px; line-height: 1.45; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .panel.graph p b { color: var(--ink); font-weight: 500; }
+  .gbar { display: flex; align-items: center; gap: 6px; margin: 0 0 5px; }
+  .gbar .seg { margin: 0; width: auto; }
+  .gbar .grow { flex: 1; }
+  .gbar input[type=range] { flex: 1; min-width: 0; height: 24px; margin: 0; accent-color: #6aa4ff; }
+  .gbar .lab { font-size: 12px; color: var(--ink); min-width: 96px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip { pointer-events: auto; display: inline-block; margin: 4px 6px 0 0; border: 1px solid #3d5378; background: #1a2333; color: #9cc1ff;
     border-radius: 12px; padding: 2px 9px; font: inherit; font-size: 11.5px; cursor: pointer; }
-  #sphereChip[hidden] { display: none; }
-  .seg.small { width: auto; flex: 1; margin: 0; }
-  .seg.small button { min-height: 26px; font-size: 12px; }
+  .chip[hidden] { display: none; }
+  .seg.small button { min-height: 26px; font-size: 12px; padding: 0 7px; }
   .gtoggle { min-height: 28px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; touch-action: manipulation; }
-  .gtoggle[aria-pressed="true"] { background: #26344a; border-color: #3d5378; }
+  .gtoggle.gico { width: 30px; padding: 0; display: grid; place-items: center; }
+  .gtoggle.gico svg { width: 16px; height: 16px; stroke: var(--ink); stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .gtoggle.gico circle[fill="currentColor"] { fill: var(--ink); stroke: none; }
   .gtoggle:disabled { opacity: .35; cursor: default; }
+  .switch:disabled { opacity: .35; cursor: default; }
   .statenav { position: fixed; right: 12px; top: 10px; display: flex; flex-direction: column; gap: 2px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; z-index: 2; }
   .statenav button { width: 36px; height: 32px; border: 0; border-radius: 7px; background: transparent; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
@@ -132,7 +133,7 @@
   <div><span id="counter">×1</span><span id="stateName"></span></div>
   <div id="legend" class="legend"><span id="legendSign">onda <i class="sw" style="background:var(--plus)"></i>+ <i class="sw" style="background:var(--minus)"></i>−</span><span id="legendIso" hidden><i class="sw" style="background:rgb(205,208,222)"></i>nessun segno</span></div>
   <div id="status"></div>
-  <button type="button" id="sphereChip" hidden></button>
+  <div><button type="button" class="chip" id="sliceChip" hidden></button><button type="button" class="chip" id="sphereChip" hidden></button></div>
 </div>
 
 <div class="panel" id="statePanel" hidden>
@@ -152,25 +153,20 @@
   <div class="row"><span id="l-cut">Taglio a metà</span><button class="switch" type="button" role="switch" id="cutSwitch" aria-labelledby="l-cut"></button></div>
 </div>
 
-<div class="panel demo" id="demoBar" hidden>
-  <p id="demoText"></p>
-  <input type="range" id="demoSlider" min="0" max="300" step="1" value="0" aria-label="Avanzamento">
-  <div class="demobtns">
-    <button type="button" class="gtoggle" id="demoPrev">Indietro</button>
-    <button type="button" class="gtoggle" id="demoPlay">Avvia</button>
-    <button type="button" class="gtoggle" id="demoNext">Avanti</button>
-    <button type="button" class="gtoggle" id="demoClose">Chiudi</button>
-  </div>
-</div>
-
 <div class="panel graph" id="graphPanel" hidden>
   <div class="gbar">
-    <div class="seg small" id="gModeSeg"><button type="button" data-g="psi">Onda ψ</button><button type="button" data-g="dens">Densità |ψ|²</button></div>
-    <button type="button" class="gtoggle" id="gSphereBtn" aria-pressed="true">Sfera</button>
-    <button type="button" class="gtoggle" id="gBuildBtn">Rotazione</button>
+    <div class="seg small" id="sShowSeg"><button type="button" data-s="psi">Onda ψ</button><button type="button" data-s="dens">Densità</button></div>
+    <span class="grow"></span>
+    <div class="seg small" id="sPlaneSeg"><button type="button" data-p="xz">xz</button><button type="button" data-p="yz">yz</button><button type="button" data-p="xy">xy</button></div>
+    <button type="button" class="gtoggle gico" id="sFace" aria-label="Guarda la fetta di fronte"><svg viewBox="0 0 18 18"><rect x="3.5" y="3.5" width="11" height="11" rx="1"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/></svg></button>
+  </div>
+  <div class="gbar"><span class="lab" id="sPosVal"></span><input type="range" id="sPos" min="-1000" max="1000" step="1" value="0" aria-label="Posizione del piano"></div>
+  <div class="gbar">
+    <div class="seg small grow" id="gTabSeg"><button type="button" data-t="line">Lungo la linea</button><button type="button" data-t="dist">Distanza dal protone</button></div>
+    <button type="button" class="gtoggle gico" id="gLineBtn" aria-label="Linea orizzontale o verticale"></button>
   </div>
   <canvas id="graphCv"></canvas>
-  <p id="graphCap"></p>
+  <p id="graphRead"></p>
 </div>
 
 <div class="panel" id="infoPanel" hidden><div class="info-body">
@@ -179,7 +175,9 @@
   <p><b>Pallini e zoom.</b> Ingrandendo, i pallini si diradano fino a sparire: sono un numero fisso di misure, e in un volume minuscolo ne cadono poche. Non vuol dire che lì l'elettrone non possa esserci.</p>
   <p><b>Superficie.</b> La zona più piccola in cui trovi l'elettrone tante volte su 100 quante scegli tu. Fuori c'è il resto: la nuvola non ha un bordo vero.</p>
   <p><b>Colori.</b> Azzurro e arancione sono il segno dell'onda, non la probabilità. Quale dei due è positivo è una convenzione.</p>
+  <p><b>Fetta</b> (pulsante con la curva). Un piano taglia l'atomo e toglie la metà davanti. Sulla faccia del taglio ogni punto mostra il valore esatto dell'onda in quel punto: il colore è il segno, la luminosità quanto è grande (nero = zero). Con "Densità" la luminosità è la probabilità. Il grafico dà i valori lungo la linea tratteggiata, oppure la probabilità a ogni distanza dal protone.</p>
   <p><b>Direzione.</b> Un atomo libero non ha una direzione preferita: negli stati eccitati la sua nuvola è sferica e non ha un segno unico (colore neutro). I lobi compaiono solo se qualcosa sceglie una direzione: attivando "Direzione scelta" si vede come sarebbe.</p>
+  <p><b>Grafico.</b> Trascina un dito sul grafico (o tocca la fetta nel 3D) per spostare il punto e leggere i valori. Due dita: ingrandisci. Due tocchi: di nuovo tutto.</p>
   <p id="infoDist"></p>
   <p><b>Protone.</b> In scala vera, circa centomila volte più piccolo della nuvola: si vede solo ingrandendo molto. È una palla di carica positiva, più intensa al centro. Il raggio medio (0,84 femtometri) è misurato; la forma esatta dell'interno è un'approssimazione, perché un'immagine 3D univoca della carica del protone non esiste.</p>
   <p><b>Calcolo.</b> Tutto viene dalle equazioni della fisica quantistica, con le costanti misurate più precise. Gli effetti trascurati (il magnetismo di elettrone e protone, la relatività) cambiano la nuvola dell'1s di meno di una parte su diecimila.</p>
@@ -647,21 +645,54 @@ function slabHalf(ppm) {
   const h = Math.max(W, H) / 2 / ppm;
   return h >= 2 * orb.r99 ? Infinity : h;            // finché lo spessore supera il doppio della sfera del 99% (sempre a ×1), nessun limite
 }
+/* centro verticale della vista: con il pannello del grafico aperto si sposta al centro dello spazio libero sopra di esso */
+let viewDY = 0, dyAnim = null;
+const midY = () => H / 2 + viewDY;
 /* posizione sullo schermo del nucleo (tutti i disegni partono da qui) */
 function nucleusScreen(ppm) {
   const b = basis();
-  return { cx: W / 2 + panX - dot3(F, b.u) * ppm, cy: H / 2 + panY + dot3(F, b.v) * ppm };
+  return { cx: W / 2 + panX - dot3(F, b.u) * ppm, cy: midY() + panY + dot3(F, b.v) * ppm };
 }
 /* punto della scena sotto un punto dello schermo, sul piano per F perpendicolare alla vista */
 function worldAt(sx, sy, ppm, b) {
-  const a = (sx - W / 2 - panX) / ppm, c = (sy - H / 2 - panY) / ppm;
+  const a = (sx - W / 2 - panX) / ppm, c = (sy - midY() - panY) / ppm;
   return [0, 1, 2].map(i => F[i] + a * b.u[i] - c * b.v[i]);
 }
 /* sposta F in modo che il punto P della scena finisca nel punto (sx, sy) dello schermo */
 function anchor(P, sx, sy, ppm, b) {
-  const a = (sx - W / 2 - panX) / ppm, c = (sy - H / 2 - panY) / ppm;
+  const a = (sx - W / 2 - panX) / ppm, c = (sy - midY() - panY) / ppm;
   F = [0, 1, 2].map(i => P[i] - a * b.u[i] + c * b.v[i]);
 }
+
+/* Fetta: un piano fisso nell'atomo (xz, yz o xy, alla distanza scelta dal nucleo) che toglie metà dell'atomo.
+   Assi del piano: e1 a destra e e2 in alto quando lo si guarda di fronte; la metà tolta è quella dal lato di chi lo
+   guarda così (e1 × e2). Vettori nella scena; n è l'asse fisico perpendicolare al piano. */
+const PLANES = {
+  xz: { e1: [1, 0, 0], e2: [0, 1, 0], n: [0, 0, -1], ax: ['x', 'z', 'y'] },
+  yz: { e1: [0, 0, -1], e2: [0, 1, 0], n: [1, 0, 0], ax: ['y', 'z', 'x'] },
+  xy: { e1: [1, 0, 0], e2: [0, 0, -1], n: [0, 1, 0], ax: ['x', 'y', 'z'] },
+};
+const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const slice = { on: false, plane: 'xz', w: 0, show: 'psi', tab: 'line', line: 'h', pu: 0, pv: 0 };
+let Mpsi = 1;                                          // massimo di |ψ| in tutto lo spazio, per lo stato scelto
+const sliceRadius = () => orb.r99;                     // la faccia è il disco del piano dentro la sfera del 99%
+const sliceShow = () => (orb && orb.iso ? 'dens' : slice.show);   // senza direzione scelta esiste solo la densità
+/* piano che toglie metà atomo: si toglie dove P·n > d. La fetta ha la precedenza sul "Taglio a metà". */
+function activeCut() {
+  if (slice.on && orb) { const P = PLANES[slice.plane], nc = cross3(P.e1, P.e2); return { n: nc, d: dot3(P.n, nc) * slice.w }; }
+  return st.cut ? { n: CUT_N, d: 0 } : null;
+}
+/* orientamento che guarda il piano di fronte: e1 a destra, e2 in alto */
+function quatFromRows(u, v, w) {
+  const tr = u[0] + v[1] + w[2];
+  let q;
+  if (tr > 0) { const s = 2 * Math.sqrt(tr + 1); q = [s / 4, (w[1] - v[2]) / s, (u[2] - w[0]) / s, (v[0] - u[1]) / s]; }
+  else if (u[0] > v[1] && u[0] > w[2]) { const s = 2 * Math.sqrt(1 + u[0] - v[1] - w[2]); q = [(w[1] - v[2]) / s, s / 4, (u[1] + v[0]) / s, (u[2] + w[0]) / s]; }
+  else if (v[1] > w[2]) { const s = 2 * Math.sqrt(1 + v[1] - u[0] - w[2]); q = [(u[2] - w[0]) / s, (u[1] + v[0]) / s, s / 4, (v[2] + w[1]) / s]; }
+  else { const s = 2 * Math.sqrt(1 + w[2] - u[0] - v[1]); q = [(v[0] - u[1]) / s, (u[2] + w[0]) / s, (v[2] + w[1]) / s, s / 4]; }
+  return qnorm(q);
+}
+const faceOnQ = () => { const P = PLANES[slice.plane]; return quatFromRows(P.e1, P.e2, cross3(P.e1, P.e2)); };
 
 /* ---------- 4. Calcolo in parallelo (più Worker) ---------- */
 const physicsSrc = $('physics').textContent, workerSrc = $('worker').textContent;
@@ -810,7 +841,7 @@ function buildKernel() {
 const EXP_N = 4096, EXP_MAX = 12, expLUT = new Float32Array(EXP_N + 1);
 for (let i = 0; i <= EXP_N; i++) expLUT[i] = 1 - Math.exp(-i / EXP_N * EXP_MAX);
 const PREVIEW_MAX = 200000;
-const interacting = () => pointers.size > 0 || !!zoomAnim || !!panAnim || !!rotAnim || !!focusAnim;
+const interacting = () => pointers.size > 0 || !!zoomAnim || !!panAnim || !!rotAnim || !!focusAnim || !!dyAnim;
 let fullPending = false;
 function drawPoints(cx, cy, ppm) {
   accP.fill(0); accN.fill(0); onScreenCount = 0;
@@ -818,12 +849,12 @@ function drawPoints(cx, cy, ppm) {
     /* con molti pallini, mentre la vista si muove se ne disegnano 200 000 (già in ordine casuale) con peso proporzionale */
     const nDraw = interacting() && pts.N > PREVIEW_MAX ? PREVIEW_MAX : pts.N, wScale = pts.N / nDraw;
     if (nDraw < pts.N) fullPending = true;
-    const b = basis(), [u0, u1, u2] = b.u, [v0, v1, v2] = b.v, [w0, w1, w2] = b.w, [c0, c1, c2] = CUT_N;
+    const b = basis(), [u0, u1, u2] = b.u, [v0, v1, v2] = b.v, [w0, w1, w2] = b.w, cut = activeCut(), [c0, c1, c2] = cut ? cut.n : CUT_N, cd = cut ? cut.d : 0;
     const sh = slabHalf(ppm), Fw = dot3(F, b.w), slab = isFinite(sh);
     const k = ppm * DPR, ox = cx * DPR, oy = cy * DPR, { K, half, SUB, ker } = kernel, pos = pts.pos, sgn = pts.sgn, dom = pts.dom, hm = hideMask;
     for (let i = 0, j = 0; i < nDraw; i++, j += 3) {
       const X = pos[j], Y = pos[j + 1], Z = pos[j + 2];
-      if (st.cut && X * c0 + Y * c1 + Z * c2 > 0) continue;
+      if (cut && X * c0 + Y * c1 + Z * c2 > cd) continue;
       if (slab && Math.abs(X * w0 + Y * w1 + Z * w2 - Fw) > sh) continue;
       if (hm && (hm >>> dom[i]) & 1) continue;
       const fx = ox + (X * u0 + Y * u1 + Z * u2) * k, fy = oy - (X * v0 + Y * v1 + Z * v2) * k;
@@ -885,7 +916,7 @@ function initGL() {
   void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`,
   `#version 300 es
   precision highp float; precision highp int; precision highp sampler3D;
-  uniform sampler3D uVol; uniform int uN; uniform float uL, uScale, uK, uPxPerPm; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf, uGain;
+  uniform sampler3D uVol; uniform int uN; uniform float uL, uScale, uK, uPxPerPm; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf, uGain, uCutD;
   uniform vec3 uU, uV, uW, uCut, uPlus, uMinus; uniform vec2 uCenter;
   out vec4 outColor;
   uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
@@ -914,8 +945,8 @@ function initGL() {
     vec3 inv = 1.0 / dd;
     vec3 ta = -p0 * inv, tb = (vec3(N) - p0) * inv, tmn = min(ta, tb), tmx = max(ta, tb);
     float t0 = max(max(tmn.x, tmn.y), tmn.z), t1 = min(min(tmx.x, tmx.y), tmx.z);
-    if (uCutOn == 1) {                                  // si tiene solo la parte con (p − centro)·taglio ≤ 0
-      float f0 = dot(p0 - vec3(0.5 * N), uCut), den = dot(dd, uCut);
+    if (uCutOn == 1) {                                  // si tiene solo la parte con (p − centro)·taglio ≤ distanza del piano
+      float f0 = dot(p0 - vec3(0.5 * N), uCut) - uCutD / uL, den = dot(dd, uCut);
       if (abs(den) < 1e-9) { if (f0 > 0.0) t1 = t0; }
       else { float tc = -f0 / den; if (den > 0.0) t1 = min(t1, tc); else t0 = max(t0, tc); }
     }
@@ -942,7 +973,7 @@ function initGL() {
     }
     float s = acc.x + acc.y, bri = 1.0 - exp(-uK * s), f = s > 0.0 ? acc.x / s : 0.0;
     outColor = vec4(mix(uMinus, uPlus, f) * bri, 1.0);
-  }`, ['uVol', 'uN', 'uL', 'uScale', 'uK', 'uPxPerPm', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uGain', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs', 'uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter'], UV);
+  }`, ['uVol', 'uN', 'uL', 'uScale', 'uK', 'uPxPerPm', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uGain', 'uCutD', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs', 'uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter'], UV);
   /* ---------- 7. Superficie: triangoli illuminati, la parte davanti nasconde quella dietro ---------- */
   progS = compile(`#version 300 es
   in vec3 aPos; in vec3 aNor; in float aSgn;
@@ -955,7 +986,7 @@ function initGL() {
   }`, `#version 300 es
   precision highp float; precision highp sampler2D;
   in vec3 vN; in float vS; in vec3 vP;
-  uniform vec3 uPlus, uMinus, uCut, uW; uniform int uCutOn, uPeel, uSlab; uniform float uAlpha, uFw, uSlabHalf, uSpec; uniform sampler2D uPrev;
+  uniform vec3 uPlus, uMinus, uCut, uW; uniform int uCutOn, uPeel, uSlab; uniform float uAlpha, uFw, uSlabHalf, uSpec, uCutD; uniform sampler2D uPrev;
   out vec4 outColor;
   uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
   bool hiddenAt(vec3 P) {                                   // la regione (dominio nodale) che contiene P è nascosta?
@@ -976,7 +1007,7 @@ function initGL() {
   }
 
   void main(){
-    if (uCutOn == 1 && dot(vP, uCut) > 0.0) discard;
+    if (uCutOn == 1 && dot(vP, uCut) > uCutD) discard;
     if (uSlab == 1 && abs(dot(vP, uW) - uFw) > uSlabHalf) discard;
     if (hiddenAt(vP)) discard;
     if (uPeel == 1 && gl_FragCoord.z <= texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).r + 1e-7) discard;   // strato già disegnato
@@ -986,7 +1017,7 @@ function initGL() {
     vec3 c = (vS > 0.0 ? uPlus : uMinus) * (0.28 + 0.72 * diff) + spec;
     if (inner) c *= 0.45;
     outColor = vec4(c * uAlpha, uAlpha);
-  }`, ['uU', 'uV', 'uW', 'uCenter', 'uSize', 'uPxPerPm', 'uDepth', 'uPlus', 'uMinus', 'uCut', 'uCutOn', 'uPeel', 'uAlpha', 'uPrev', 'uSlab', 'uFw', 'uSlabHalf', 'uSpec', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], US);
+  }`, ['uU', 'uV', 'uW', 'uCenter', 'uSize', 'uPxPerPm', 'uDepth', 'uPlus', 'uMinus', 'uCut', 'uCutOn', 'uPeel', 'uAlpha', 'uPrev', 'uSlab', 'uFw', 'uSlabHalf', 'uSpec', 'uCutD', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], US);
   /* Sezione del taglio: dove il piano attraversa una regione (ψ² > t) la si riempie, come un solido tagliato.
      ψ è calcolata qui dalla formula esatta, pixel per pixel; la luminosità cresce con la densità nel punto. */
   progC = compile(`#version 300 es
@@ -995,7 +1026,7 @@ function initGL() {
   precision highp float; precision highp int; precision highp sampler2D;
   uniform vec3 uU, uV, uW, uCut, uPlus, uMinus; uniform vec2 uCenter; uniform float uPxPerPm, uDepth, uRS, uT, uAlpha;
   uniform int uPeel; uniform sampler2D uPrev;
-  uniform vec3 uPN; uniform float uPD; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf;
+  uniform vec3 uPN; uniform float uPD; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf, uCutD;
   uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
   bool hiddenAt(vec3 P) {                                   // la regione (dominio nodale) che contiene P è nascosta?
     if (uHide == 0u) return false;
@@ -1048,7 +1079,7 @@ function initGL() {
     float den = dot(dir, uPN);
     if (abs(den) < 1e-6) discard;
     vec3 P = p0 + dir * ((uPD - dot(p0, uPN)) / den);     // punto della linea di vista che sta sul piano (P·n = d)
-    if (uCutOn == 1 && dot(P, uCut) > 1e-3) discard;       // rispetta il taglio a metà
+    if (uCutOn == 1 && dot(P, uCut) > uCutD + 1e-3 + 1e-5 * uRS) discard;   // rispetta il taglio
     if (uSlab == 1 && abs(dot(P, uW) - uFw) > uSlabHalf * 1.0001) discard;   // e lo spessore visibile
     if (hiddenAt(P)) discard;
     if (length(P) > uRS) discard;
@@ -1059,7 +1090,7 @@ function initGL() {
     if (uPeel == 1 && z <= texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).r + 1e-7) discard;
     outColor = vec4((v > 0.0 ? uPlus : uMinus) * b * uAlpha, uAlpha);
     gl_FragDepth = z;
-  }`, ['uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter', 'uPxPerPm', 'uDepth', 'uRS', 'uT', 'uLc', 'uK', 'uL', 'uAm', 'uMs', 'uFree', 'uSc', 'uNR', 'uNY', 'uAlpha', 'uPeel', 'uPrev', 'uPN', 'uPD', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], UC);
+  }`, ['uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter', 'uPxPerPm', 'uDepth', 'uRS', 'uT', 'uLc', 'uK', 'uL', 'uAm', 'uMs', 'uFree', 'uSc', 'uNR', 'uNY', 'uAlpha', 'uPeel', 'uPrev', 'uPN', 'uPD', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uCutD', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], UC);
   progQ = compile(`#version 300 es
   void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`,
   `#version 300 es
@@ -1093,11 +1124,11 @@ function uploadMesh(m) {
 }
 /* luminosità dei cubetti: il 99° percentile delle colonne nella vista corrente arriva all'89% (stessa regola dei pallini) */
 function cubeExposure() {
-  const { N, L, half, scale } = vox, b = basis(), c = (N - 1) / 2, B = 2 * N + 3, hist = new Float64Array(B * B);
+  const { N, L, half, scale } = vox, b = basis(), c = (N - 1) / 2, B = 2 * N + 3, hist = new Float64Array(B * B), cut = activeCut();
   const step = N > 180 ? 2 : 1;
   for (let k = 0; k < N; k += step) for (let j = 0; j < N; j += step) for (let i = 0; i < N; i += step) {
     const X = i - c, Y = j - c, Z = k - c;
-    if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+    if (cut && (X * cut.n[0] + Y * cut.n[1] + Z * cut.n[2]) * L > cut.d) continue;
     const q = 2 * (i + N * (j + N * k)), d = HALF[half[q]] + HALF[half[q + 1]];
     if (d === 0) continue;
     const s = X * b.u[0] + Y * b.u[1] + Z * b.u[2], t = X * b.v[0] + Y * b.v[1] + Z * b.v[2];
@@ -1150,17 +1181,18 @@ function surfaceUniforms(b, cxg, cyg, ppm, alpha) {
   gl.uniform3fv(US.uU, b.u); gl.uniform3fv(US.uV, b.v); gl.uniform3fv(US.uW, b.w);
   gl.uniform2f(US.uCenter, cxg, cyg); gl.uniform2f(US.uSize, glc.width, glc.height);
   gl.uniform1f(US.uPxPerPm, ppm * GL_SCALE); gl.uniform1f(US.uDepth, surf.rS * 1.8);
-  gl.uniform3fv(US.uPlus, P); gl.uniform3fv(US.uMinus, Mn); gl.uniform3fv(US.uCut, CUT_N); gl.uniform1i(US.uCutOn, st.cut ? 1 : 0);
+  const cut = activeCut();
+  gl.uniform3fv(US.uPlus, P); gl.uniform3fv(US.uMinus, Mn); gl.uniform3fv(US.uCut, cut ? cut.n : CUT_N); gl.uniform1i(US.uCutOn, cut ? 1 : 0); gl.uniform1f(US.uCutD, cut ? cut.d : 0);
   gl.uniform1f(US.uAlpha, alpha); gl.uniform1i(US.uPrev, 1);
   gl.uniform1f(US.uSpec, settings.gloss ? 0.22 : 0.0);   // riflessi: solo un aiuto per leggere la curvatura
   gl.uniform1i(US.uSlab, 0); gl.uniform1f(US.uFw, 0); gl.uniform1f(US.uSlabHalf, 1e30);   // la superficie si vede sempre intera
   setHideUniforms(US);
-  caps = st.cut ? [{ n: CUT_N, d: 0 }] : [];
+  caps = cut ? [{ n: cut.n, d: cut.d }] : [];
   if (!caps.length) return;
   const cf = orb.coef, norm = 1 / Math.sqrt(orb.dens2max), Lc = new Float32Array(8);
   cf.Lc.forEach((v, i) => { Lc[i] = v; });
   gl.useProgram(progC);
-  gl.uniform3fv(UC.uU, b.u); gl.uniform3fv(UC.uV, b.v); gl.uniform3fv(UC.uW, b.w); gl.uniform3fv(UC.uCut, CUT_N);
+  gl.uniform3fv(UC.uU, b.u); gl.uniform3fv(UC.uV, b.v); gl.uniform3fv(UC.uW, b.w); gl.uniform3fv(UC.uCut, cut.n); gl.uniform1f(UC.uCutD, cut.d);
   gl.uniform3fv(UC.uPlus, P); gl.uniform3fv(UC.uMinus, Mn); gl.uniform2f(UC.uCenter, cxg, cyg);
   gl.uniform1f(UC.uPxPerPm, ppm * GL_SCALE); gl.uniform1f(UC.uDepth, surf.rS * 1.8); gl.uniform1f(UC.uRS, surf.rS);
   gl.uniform1f(UC.uT, surf.t / orb.dens2max);
@@ -1168,7 +1200,7 @@ function surfaceUniforms(b, cxg, cyg, ppm, alpha) {
   gl.uniform1i(UC.uMs, cf.m === 0 ? 0 : cf.m > 0 ? 1 : -1); gl.uniform1i(UC.uFree, cf.iso ? 1 : 0);
   gl.uniform1f(UC.uSc, cf.sc); gl.uniform1f(UC.uNR, cf.NR * norm); gl.uniform1f(UC.uNY, cf.NY);
   gl.uniform1f(UC.uAlpha, alpha); gl.uniform1i(UC.uPrev, 1);
-  gl.uniform1i(UC.uCutOn, st.cut ? 1 : 0); gl.uniform1i(UC.uSlab, 0);
+  gl.uniform1i(UC.uCutOn, 1); gl.uniform1i(UC.uSlab, 0);
   gl.uniform1f(UC.uFw, 0); gl.uniform1f(UC.uSlabHalf, 1e30);
   setHideUniforms(UC);
 }
@@ -1190,14 +1222,15 @@ function drawGL(cx, cy, ppm) {
     gl.disable(gl.DEPTH_TEST); gl.useProgram(progV); gl.bindVertexArray(null);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_3D, tex);
     gl.uniform1i(UV.uVol, 0); gl.uniform1i(UV.uN, vox.N); gl.uniform1f(UV.uL, vox.L); gl.uniform1f(UV.uScale, 1 / vox.scale);
-    gl.uniform1f(UV.uK, vox.k); gl.uniform1f(UV.uPxPerPm, ppm * GL_SCALE); gl.uniform1i(UV.uCutOn, st.cut ? 1 : 0);
+    const cut = activeCut();
+    gl.uniform1f(UV.uK, vox.k); gl.uniform1f(UV.uPxPerPm, ppm * GL_SCALE); gl.uniform1i(UV.uCutOn, cut ? 1 : 0); gl.uniform1f(UV.uCutD, cut ? cut.d : 0);
     /* con lo spessore limitato la luminosità segue la densità media nello spessore visibile: finché lo spessore è più
        grande del diametro della nuvola è la stessa di ×1, poi non si scurisce solo perché lo spessore si assottiglia */
     const sh = slabHalf(ppm);
     gl.uniform1i(UV.uSlab, isFinite(sh) ? 1 : 0); gl.uniform1f(UV.uFw, dot3(F, b.w)); gl.uniform1f(UV.uSlabHalf, isFinite(sh) ? sh : 1e30);
     gl.uniform1f(UV.uGain, isFinite(sh) ? Math.max(1, orb.r99 / sh) : 1);
     setHideUniforms(UV);
-    gl.uniform3fv(UV.uU, b.u); gl.uniform3fv(UV.uV, b.v); gl.uniform3fv(UV.uW, b.w); gl.uniform3fv(UV.uCut, CUT_N);
+    gl.uniform3fv(UV.uU, b.u); gl.uniform3fv(UV.uV, b.v); gl.uniform3fv(UV.uW, b.w); gl.uniform3fv(UV.uCut, cut ? cut.n : CUT_N);
     gl.uniform3fv(UV.uPlus, colPlus().map(v => v / 255)); gl.uniform3fv(UV.uMinus, colMinus().map(v => v / 255)); gl.uniform2f(UV.uCenter, cxg, cyg);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -1320,10 +1353,11 @@ function drawMap(cx, cy, r99px) {
   ctx.roundRect ? ctx.roundRect(bx + 0.5, by + 0.5, size - 1, size - 1, 10) : ctx.rect(bx + 0.5, by + 0.5, size - 1, size - 1);
   ctx.fillStyle = '#0d0d0d'; ctx.fill(); ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1; ctx.stroke(); ctx.clip();
   if (mini) {
+    const cut = activeCut();
     const cP = 'rgba(' + colPlus().join(',') + ',0.55)', cN = 'rgba(' + colMinus().join(',') + ',0.55)';
     for (let i = 0; i < mini.n; i++) {
       const X = mini.pos[3 * i], Y = mini.pos[3 * i + 1], Z = mini.pos[3 * i + 2];
-      if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+      if (cut && X * cut.n[0] + Y * cut.n[1] + Z * cut.n[2] > cut.d) continue;
       if (hideMask && (hideMask >>> mini.dom[i]) & 1) continue;
       ctx.fillStyle = mini.sgn[i] >= 0 ? cP : cN;
       ctx.fillRect(mx + (X * b.u[0] + Y * b.u[1] + Z * b.u[2]) * km - 0.5, my - (X * b.v[0] + Y * b.v[1] + Z * b.v[2]) * km - 0.5, 1, 1);
@@ -1392,148 +1426,185 @@ function drawSelSphere(cx, cy, ppm, r) {
   }
   ctx.restore();
 }
-/* Dimostrazione: come dal grafico si ottiene la nuvola 3D, quando il valore dipende solo dalla distanza.
-   L'avanzamento p va da 0 a 3 e lo controlli tu (cursore, Avanti/Indietro, Avvia): la riproduzione si ferma alla fine
-   di ogni fase, così c'è il tempo di guardare.
-   Fase 1 (0→1): il grafico è disegnato in piedi sulla retta che parte dal protone; l'altezza si abbassa e diventa
-                 luminosità lungo la retta.
-   Fase 2 (1→2): la retta gira nel piano: ogni punto del piano prende il valore della sua distanza (un disco ad anelli).
-   Fase 3 (2→3): il disco gira attorno al suo diametro verticale per mezzo giro e passa per ogni punto dello spazio. */
-let demo = null;
-const DEMO_STEP_MS = 5000;                               // durata di ogni fase in riproduzione
-const DEMO_TEXT = [
-  '1. Il grafico, disegnato in piedi sulla retta che parte dal protone. Abbassandosi, la sua altezza diventa luminosità lungo la retta: più alto il valore, più luminoso il punto.',
-  '2. La retta gira nel piano attorno al protone. Ogni punto del piano prende il valore della sua distanza dal protone: si forma un disco ad anelli.',
-  '3. Il disco gira attorno al suo asse verticale. In mezzo giro passa per ogni punto dello spazio, e ogni punto ha il valore della sua distanza: è la nuvola 3D.',
-  'Fatto: ogni punto dello spazio ha il valore del grafico alla sua distanza. Chiudi per tornare alla nuvola.',
-];
-function demoColor(r) {                                  // [r, g, b, a] per la distanza r
-  const v = gVal(r), mag = Math.sqrt(Math.min(1, gMode === 'dens' ? v : Math.abs(v)));
-  const c = orb.iso ? COL_NEUTRAL : (orb.R(r) / gNorm) >= 0 ? COL_PLUS : COL_MINUS;
-  return [c[0], c[1], c[2], mag];
+/* ---------- Fetta: la faccia del taglio ----------
+   Ogni punto della faccia è il valore esatto dell'onda (la stessa formula del 3D) nel punto del piano che vi cade.
+   Colore = segno; luminosità proporzionale a |ψ| (onda) o a |ψ|² (densità), dove 1 è il massimo dello stato in tutto
+   lo spazio, quindi una fetta lontana dal nucleo è più scura per davvero. Nella proiezione ortogonale un piano si vede
+   con una trasformazione affine esatta: l'immagine calcolata sul piano si porta sullo schermo senza deformazioni.
+   Si calcola solo la parte visibile, con un valore per pixel: subito a bassa risoluzione, poi nitida a vista ferma. */
+function psiMax(o) {                                   // max |R| (ricerca fitta + raffinamento) × max |parte angolare|
+  const N = 6000, f = r => Math.abs(o.R(r)), at = i => o.rTail * (i / N) * (i / N);
+  let best = 0, bi = 0;
+  for (let i = 0; i <= N; i++) { const v = f(at(i)); if (v > best) { best = v; bi = i; } }
+  let a = at(Math.max(0, bi - 1)), b = at(Math.min(N, bi + 1));
+  for (let it = 0; it < 100; it++) { const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3; if (f(m1) < f(m2)) a = m1; else b = m2; }
+  return Math.max(best, f((a + b) / 2)) * Math.sqrt(o.Y2maxPlain);
 }
-function buildDemoImages(Rd) {                           // disco ad anelli pre-calcolato (il disegno resta fluido)
-  const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
-  const g = cv.getContext('2d'), im = g.createImageData(S, S), table = [];
-  for (let k = 0; k <= 1024; k++) table.push(demoColor(Rd * k / 1024));
-  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const dx = (x + 0.5) / (S / 2) - 1, dy = (y + 0.5) / (S / 2) - 1, d = Math.hypot(dx, dy), o = 4 * (y * S + x);
-    if (d > 1) { im.data[o + 3] = 0; continue; }
-    const c = table[Math.round(d * 1024)];
-    im.data[o] = c[0]; im.data[o + 1] = c[1]; im.data[o + 2] = c[2]; im.data[o + 3] = Math.round(255 * c[3]);
+function sliceGeom(ppm, cx, cy, b) {                   // schermo (px) = o + a1·u + a2·v, con (u, v) coordinate nel piano (pm)
+  const P = PLANES[slice.plane], w = slice.w, Rf = sliceRadius();
+  return { P, w, rho: Math.sqrt(Math.max(0, Rf * Rf - w * w)),
+    a1: [dot3(P.e1, b.u) * ppm, -dot3(P.e1, b.v) * ppm], a2: [dot3(P.e2, b.u) * ppm, -dot3(P.e2, b.v) * ppm],
+    o: [cx + dot3(P.n, b.u) * ppm * w, cy - dot3(P.n, b.v) * ppm * w],
+    facing: dot3(cross3(P.e1, P.e2), b.w) };           // > 0: chi guarda vede la faccia
+}
+const onScreen = (g, u, v) => [g.o[0] + g.a1[0] * u + g.a2[0] * v, g.o[1] + g.a1[1] * u + g.a2[1] * v];
+function toPlane(g, sx, sy) {
+  const det = g.a1[0] * g.a2[1] - g.a2[0] * g.a1[1], dx = sx - g.o[0], dy = sy - g.o[1];
+  return [(dx * g.a2[1] - g.a2[0] * dy) / det, (g.a1[0] * dy - dx * g.a1[1]) / det];
+}
+let sliceTex = null, sliceJob = null;
+const SLICE_PREVIEW = 40000, SLICE_FULL = 1.6e6;
+const sliceValKey = () => [st.n, st.l, st.m, st.free, slice.plane, slice.w, hideMask].join('|');
+const sliceViewKey = () => [Q.join(), logS, F.join(), panX, panY, viewDY, W, H, DPR].join('|');
+function sliceRegion(g, maxTexels) {                  // parte del disco che cade sullo schermo (con margine) e passo dei punti
+  if (!(g.rho > 0) || !(g.facing > 0.02)) return null;
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  const mx = 0.15 * W, my = 0.15 * H;
+  for (const [sx, sy] of [[-mx, -my], [W + mx, -my], [-mx, H + my], [W + mx, H + my]]) {
+    const [u, v] = toPlane(g, sx, sy);
+    u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
   }
-  g.putImageData(im, 0, 0);
-  return { disk: cv, table, Rd };
+  u0 = Math.max(u0, -g.rho); u1 = Math.min(u1, g.rho); v0 = Math.max(v0, -g.rho); v1 = Math.min(v1, g.rho);
+  if (!(u1 > u0 && v1 > v0)) return null;
+  const S = g.a1[0] ** 2 + g.a1[1] ** 2 + g.a2[0] ** 2 + g.a2[1] ** 2, det = g.a1[0] * g.a2[1] - g.a2[0] * g.a1[1];
+  const sig = Math.sqrt((S + Math.sqrt(Math.max(0, S * S - 4 * det * det))) / 2);   // pixel per pm nella direzione più lunga
+  let h = 1 / (sig * DPR);
+  const n = (u1 - u0) * (v1 - v0) / (h * h);
+  if (n > maxTexels) h *= Math.sqrt(n / maxTexels);
+  return { u0, v1, nu: Math.max(1, Math.ceil((u1 - u0) / h)), nv: Math.max(1, Math.ceil((v1 - v0) / h)), h, rho: g.rho };
 }
-function startDemo() {
-  if (!(st.l === 0 || orb.iso)) return;
-  demo = { p: 0, playing: false, last: 0, img: buildDemoImages(orb.r99 * 1.15) };
-  togglePanel(graphPanel, $('graphBtn'), false);
-  $('demoBar').hidden = false;
-  syncDemo(); requestFrame();
+function newSliceTex(R, valKey, viewKey) {
+  const c = document.createElement('canvas'); c.width = R.nu; c.height = R.nv;
+  return Object.assign({}, R, { valKey, viewKey, val: new Float32Array(R.nu * R.nv), canvas: c, rows: 0, full: false, show: '' });
 }
-function endDemo() { demo = null; $('demoBar').hidden = true; requestFrame(); }
-function syncDemo() {
-  if (!demo) return;
-  $('demoSlider').value = Math.round(demo.p * 100);
-  $('demoText').textContent = DEMO_TEXT[demo.p >= 3 ? 3 : Math.floor(demo.p)];
-  $('demoPlay').textContent = demo.playing ? 'Pausa' : (demo.p >= 3 ? 'Da capo' : 'Avvia');
-  $('demoPrev').disabled = demo.p <= 0; $('demoNext').disabled = demo.p >= 3;
-}
-function demoAdvance(now) {                              // chiamata a ogni fotogramma
-  if (!demo || !demo.playing) return;
-  const dt = demo.last ? now - demo.last : 0; demo.last = now;
-  const stop = Math.min(3, Math.floor(demo.p + 1e-9) + 1);              // si ferma alla fine della fase
-  demo.p = Math.min(stop, demo.p + dt / DEMO_STEP_MS);
-  if (demo.p >= stop - 1e-9) { demo.p = stop; demo.playing = false; }
-  syncDemo();
-}
-$('demoSlider').addEventListener('input', e => { if (!demo) return; demo.playing = false; demo.p = e.target.value / 100; syncDemo(); requestFrame(); });
-$('demoPlay').addEventListener('click', () => { if (!demo) return; if (demo.p >= 3) demo.p = 0; demo.playing = !demo.playing; demo.last = 0; syncDemo(); requestFrame(); });
-$('demoNext').addEventListener('click', () => { if (!demo) return; demo.playing = false; demo.p = Math.min(3, Math.floor(demo.p + 1e-9) + 1); syncDemo(); requestFrame(); });
-$('demoPrev').addEventListener('click', () => { if (!demo) return; demo.playing = false; demo.p = Math.max(0, Math.ceil(demo.p - 1e-9) - 1); syncDemo(); requestFrame(); });
-$('demoClose').addEventListener('click', endDemo);
-/* disco del piano (e1, e2) visto dalla vista corrente, eventualmente solo lo spicchio tra gli angoli 0 e phi */
-function drawDemoDisk(cx, cy, ppm, e1, e2, phi, alpha) {
-  const b = basis(), Rd = demo.img.Rd * ppm;
-  const a = dot3(e1, b.u) * Rd, bb = -dot3(e1, b.v) * Rd, c = dot3(e2, b.u) * Rd, d = -dot3(e2, b.v) * Rd;
-  if (Math.abs(a * d - bb * c) < 0.5) return;
-  ctx.save();
-  ctx.setTransform(DPR * a, DPR * bb, DPR * c, DPR * d, DPR * cx, DPR * cy);   // il disco unitario va nel piano giusto
-  if (phi < 2 * Math.PI - 1e-6) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1.01, 0, phi); ctx.closePath(); ctx.clip(); }
-  ctx.globalAlpha = alpha;
-  ctx.drawImage(demo.img.disk, -1, -1, 2, 2);
-  ctx.restore();
-}
-function drawDemo(cx, cy, ppm) {
-  const b = basis(), Rd = demo.img.Rd, p = demo.p, sm = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
-  const P = v => [cx + dot3(v, b.u) * ppm, cy - dot3(v, b.v) * ppm];
-  const X1 = [1, 0, 0], Y1 = [0, 1, 0];
-  const ray = (dir, alpha) => {                          // retta luminosa: colori del grafico lungo la distanza
-    const N = 160;
-    ctx.save(); ctx.lineWidth = 5; ctx.lineCap = 'butt';
-    for (let i = 0; i < N; i++) {
-      const c = demo.img.table[Math.round((i + 0.5) / N * 1024)];
-      const p0 = P(dir.map(x => x * Rd * i / N)), p1 = P(dir.map(x => x * Rd * (i + 1) / N));
-      ctx.strokeStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (c[3] * alpha).toFixed(3) + ')';
-      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+function sliceRows(T, j0, j1) {                        // valori esatti dell'onda nei centri dei punti dell'immagine
+  const P = PLANES[slice.plane], w = slice.w, r2 = T.rho * T.rho, hm = hideMask;
+  const [a0, a1, a2] = P.e1, [b0, b1, b2] = P.e2, [n0, n1, n2] = P.n;
+  for (let j = j0; j < j1; j++) {
+    const v = T.v1 - (j + 0.5) * T.h;
+    for (let i = 0, o = j * T.nu; i < T.nu; i++, o++) {
+      const u = T.u0 + (i + 0.5) * T.h;
+      if (u * u + v * v > r2) { T.val[o] = NaN; continue; }
+      const X = a0 * u + b0 * v + n0 * w, Y = a1 * u + b1 * v + n1 * w, Z = a2 * u + b2 * v + n2 * w;
+      T.val[o] = hm && (hm >>> orb.domainOf(X, Y, Z)) & 1 ? NaN : orb.psi(X, Y, Z);
     }
-    ctx.restore();
+  }
+}
+function sliceColorize(T) {
+  const ctxT = T.canvas.getContext('2d'), im = ctxT.createImageData(T.nu, T.nv), d = im.data, dens = sliceShow() === 'dens';
+  const [pr, pg, pb] = colPlus(), [nr, ng, nb] = colMinus(), k = 1 / Mpsi;
+  for (let o = 0, q = 0; o < T.val.length; o++, q += 4) {
+    const v = T.val[o];
+    if (v !== v) { d[q + 3] = 0; continue; }           // fuori dal disco o regione nascosta
+    const a = Math.abs(v) * k, bri = Math.min(1, dens ? a * a : a);
+    if (v >= 0) { d[q] = pr * bri; d[q + 1] = pg * bri; d[q + 2] = pb * bri; } else { d[q] = nr * bri; d[q + 1] = ng * bri; d[q + 2] = nb * bri; }
+    d[q + 3] = 255;
+  }
+  ctxT.putImageData(im, 0, 0); T.show = sliceShow();
+}
+function startSliceJob(g, valKey, viewKey) {
+  const R = sliceRegion(g, SLICE_FULL); if (!R) return;
+  const T = newSliceTex(R, valKey, viewKey);
+  sliceJob = T;
+  const step = () => {
+    if (sliceJob !== T) return;
+    const t0 = performance.now();
+    while (T.rows < T.nv && performance.now() - t0 < 10) { const j1 = Math.min(T.nv, T.rows + 6); sliceRows(T, T.rows, j1); T.rows = j1; }
+    if (T.rows < T.nv) { requestAnimationFrame(step); return; }
+    sliceColorize(T); T.full = true; sliceTex = T; sliceJob = null; requestFrame();
   };
-  if (p < 1) {
-    const s = sm(p), H = 0.45 * Rd;                     // altezza del grafico in piedi sulla retta
-    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
-    const a0 = P([0, 0, 0]), a1 = P(X1.map(x => x * Rd)); ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let i = 0; i <= 240; i++) {
-      const r = Rd * i / 240, q = P([r, gVal(r) * H * (1 - s), 0]);
-      if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]);
+  requestAnimationFrame(step);
+}
+function polyOnPlane(g, f, n) {                        // percorso sullo schermo di una curva del piano (u, v) = f(t), t ∈ [0, 1]
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) { const [u, v] = f(i / n), [x, y] = onScreen(g, u, v); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+}
+function drawSlice(cx, cy, ppm) {
+  const g = sliceGeom(ppm, cx, cy, basis()), vis = g.facing > 0.02;
+  if (!(g.rho > 0)) return;
+  if (vis) {
+    const vk = sliceViewKey(), dk = sliceValKey(), busy = interacting();
+    if (sliceJob && (sliceJob.valKey !== dk || sliceJob.viewKey !== vk)) sliceJob = null;
+    if (!sliceTex || sliceTex.valKey !== dk || sliceTex.viewKey !== vk) {        // subito, a bassa risoluzione
+      const R = sliceRegion(g, SLICE_PREVIEW);
+      if (R) { const T = newSliceTex(R, dk, vk); sliceRows(T, 0, T.nv); sliceColorize(T); sliceTex = T; }
     }
-    ctx.stroke(); ctx.restore();
-    ray(X1, s);
-    return;
+    if (busy) fullPending = true;
+    else if (!(sliceTex && sliceTex.full && sliceTex.viewKey === vk && sliceTex.valKey === dk) && !sliceJob) startSliceJob(g, dk, vk);
+    const T = sliceTex;
+    if (T && T.valKey === dk) {
+      if (T.show !== sliceShow()) sliceColorize(T);
+      const h = T.h * DPR;
+      ctx.save();
+      ctx.setTransform(g.a1[0] * h, g.a1[1] * h, -g.a2[0] * h, -g.a2[1] * h,
+        DPR * (g.o[0] + g.a1[0] * T.u0 + g.a2[0] * T.v1), DPR * (g.o[1] + g.a1[1] * T.u0 + g.a2[1] * T.v1));
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(T.canvas, 0, 0);
+      ctx.restore();
+    }
   }
-  if (p < 2) {
-    const phi = (p - 1) * 2 * Math.PI;
-    drawDemoDisk(cx, cy, ppm, X1, Y1, phi, 0.95);
-    ray([Math.cos(phi), Math.sin(phi), 0], 1);
-    return;
+  /* bordo della faccia (da dietro: solo il contorno tratteggiato, per sapere dov'è il piano) */
+  ctx.save();
+  ctx.lineWidth = 1; ctx.strokeStyle = vis ? 'rgba(255,255,255,0.38)' : 'rgba(255,255,255,0.22)'; if (!vis) ctx.setLineDash([5, 4]);
+  polyOnPlane(g, t => [g.rho * Math.cos(2 * Math.PI * t), g.rho * Math.sin(2 * Math.PI * t)], 120); ctx.stroke();
+  ctx.restore();
+  if (!vis) return;
+  /* sfera scelta sul grafico delle distanze: dove taglia il piano */
+  if (selSphere !== null && selSphere > Math.abs(slice.w)) {
+    const rs = Math.sqrt(selSphere * selSphere - slice.w * slice.w);
+    ctx.save(); ctx.strokeStyle = 'rgba(106,164,255,0.9)'; ctx.lineWidth = 1.5;
+    polyOnPlane(g, t => [rs * Math.cos(2 * Math.PI * t), rs * Math.sin(2 * Math.PI * t)], 120); ctx.stroke(); ctx.restore();
   }
-  const th = (p - 2) * Math.PI, dTh = Math.PI / 90;
-  ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  for (let k = 0; k * dTh < th; k++) {                  // la scia: i dischi già passati, leggeri, si sommano in volume
-    const a = k * dTh;
-    drawDemoDisk(cx, cy, ppm, [Math.cos(a), 0, -Math.sin(a)], Y1, 2 * Math.PI, 0.05);
+  /* linea del grafico e punto */
+  const hl = slice.line === 'h', c = hl ? slice.pv : slice.pu, half = Math.sqrt(Math.max(0, g.rho * g.rho - c * c));
+  ctx.save();
+  if (half > 0) {
+    ctx.strokeStyle = 'rgba(106,164,255,0.85)'; ctx.lineWidth = 1.2; ctx.setLineDash([6, 4]);
+    polyOnPlane(g, t => (hl ? [-half + 2 * half * t, c] : [c, -half + 2 * half * t]), 1); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (slice.pu * slice.pu + slice.pv * slice.pv <= g.rho * g.rho) {
+    const [x, y] = onScreen(g, slice.pu, slice.pv);
+    ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 2 * Math.PI); ctx.fillStyle = '#6aa4ff'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#000'; ctx.stroke();
   }
   ctx.restore();
-  drawDemoDisk(cx, cy, ppm, [Math.cos(th), 0, -Math.sin(th)], Y1, 2 * Math.PI, p >= 3 ? 0.35 : 0.9);
 }
-
-/* ---------- sfera della distanza scelta: resta anche chiudendo il grafico, si toglie con il suo pulsante ---------- */
-function syncSphereChip() {
-  const on = gSphere && gCursor !== null && !demo;
-  $('sphereChip').hidden = !on;
-  if (on) $('sphereChip').textContent = 'Sfera ' + (gCursor >= 1 ? formatNumber(+gCursor.toPrecision(4)) + ' pm' : formatNumber(+(gCursor * 1e3).toPrecision(4)) + ' fm') + '   ✕';
+/* tocco sulla faccia: il punto (e la linea del grafico) si spostano lì */
+function slicePick(sx, sy) {
+  const ppm = pxPerPm(), { cx, cy } = nucleusScreen(ppm), g = sliceGeom(ppm, cx, cy, basis());
+  if (!(g.facing > 0.02)) return false;
+  const [u, v] = toPlane(g, sx, sy);
+  if (u * u + v * v > g.rho * g.rho) return false;
+  slice.pu = u; slice.pv = v;
+  return true;
 }
-$('sphereChip').addEventListener('click', () => { gCursor = null; drawGraph(); syncSphereChip(); requestFrame(); });
+/* la fetta e la sfera restano anche chiudendo il pannello; si tolgono con il loro pulsante */
+function syncChips() {
+  const sc = $('sliceChip'), sp = $('sphereChip');
+  sc.hidden = !slice.on;
+  if (slice.on) sc.textContent = 'Fetta ' + slice.plane + ', ' + PLANES[slice.plane].ax[2] + ' = ' + fmtLen(slice.w) + '   ✕';
+  sp.hidden = selSphere === null;
+  if (selSphere !== null) sp.textContent = 'Sfera ' + fmtLen(selSphere) + '   ✕';
+}
+$('sliceChip').addEventListener('click', () => { setSlice({ on: false }); closePanels(); });
+$('sphereChip').addEventListener('click', () => { selSphere = null; updateGraph(); requestFrame(); });
 
 /* ---------- disegno complessivo ---------- */
 function draw() {
   if (!orb) return;
   const ppm = pxPerPm(), { cx, cy } = nucleusScreen(ppm), r99px = orb.r99 * ppm;
-  const useGL = gl && (st.modes.cubes || st.modes.surface) && !demo;
+  const useGL = gl && (st.modes.cubes || st.modes.surface);
   glc.style.visibility = useGL ? 'visible' : 'hidden';
-  pcv.style.visibility = st.modes.points && !demo ? 'visible' : 'hidden';
+  pcv.style.visibility = st.modes.points ? 'visible' : 'hidden';
   if (useGL) { setGLScale(st.modes.cubes && interacting() ? 0.75 : Math.min(DPR, 1.5)); if (st.modes.cubes && interacting()) fullPending = true; drawGL(cx, cy, ppm); }
-  if (st.modes.points && !demo) drawPoints(cx, cy, ppm);
+  if (st.modes.points) drawPoints(cx, cy, ppm);
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, Wd, Hd);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (demo) drawDemo(cx, cy, ppm);
   if (settings.axes) drawAxes(cx, cy, r99px, false);
+  if (slice.on) drawSlice(cx, cy, ppm);
   if (settings.proton) drawProton(cx, cy, ppm);
   if (settings.axes) drawAxes(cx, cy, r99px, true);
-  if (!demo && gSphere && gCursor !== null) drawSelSphere(cx, cy, ppm, gCursor);
-  syncSphereChip();
+  if (selSphere !== null) drawSelSphere(cx, cy, ppm, selSphere);
+  syncChips();
   if (settings.map) drawMap(cx, cy, r99px);
   if (settings.ruler) drawRuler(ppm);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1582,7 +1653,7 @@ function updateStatus() {
   const flags = [];
   const sh = orb && (st.modes.points || st.modes.cubes) ? slabHalf(pxPerPm()) : Infinity;
   if (isFinite(sh)) flags.push('prof. ±' + formatDistance(sh));
-  if (st.cut) flags.push('taglio');
+  if (st.cut && !slice.on) flags.push('taglio');
   if (!st.lock) flags.push('vista libera');
   if (hideMask) { let c = 0; for (let i = 0; i < 32; i++) if ((hideMask >>> i) & 1) c++; flags.push('nascoste ' + c + '/' + orb.nDomains); }
   if (hideTool) flags.push('tocca una regione');
@@ -1594,7 +1665,6 @@ function updateStatus() {
 const easeOut = t => 1 - Math.pow(1 - t, 3);
 function tick() {
   raf = 0; const now = performance.now();
-  demoAdvance(now);
   if (zoomAnim) {
     const k = Math.min(1, (now - zoomAnim.t0) / zoomAnim.dur), b = basis();
     const P = zoomAnim.anchor ? worldAt(zoomAnim.sx, zoomAnim.sy, pxPerPm(), b) : null;
@@ -1604,9 +1674,10 @@ function tick() {
   }
   if (panAnim) { const k = Math.min(1, (now - panAnim.t0) / panAnim.dur), e = easeOut(k); panX = panAnim.x * (1 - e); panY = panAnim.y * (1 - e); if (k >= 1) { panX = panY = 0; panAnim = null; } }
   if (focusAnim) { const k = Math.min(1, (now - focusAnim.t0) / focusAnim.dur), e = easeOut(k); F = focusAnim.from.map(v => v * (1 - e)); if (k >= 1) { F = [0, 0, 0]; focusAnim = null; } }
-  if (rotAnim) { const k = Math.min(1, (now - rotAnim.t0) / rotAnim.dur); Q = qslerp(rotAnim.from, Q0, easeOut(k)); if (k >= 1) { Q = Q0.slice(); rotAnim = null; } }
+  if (dyAnim) { const k = Math.min(1, (now - dyAnim.t0) / dyAnim.dur); viewDY = dyAnim.from + (dyAnim.to - dyAnim.from) * easeOut(k); if (k >= 1) { viewDY = dyAnim.to; dyAnim = null; } }
+  if (rotAnim) { const k = Math.min(1, (now - rotAnim.t0) / rotAnim.dur), to = rotAnim.to || Q0; Q = qslerp(rotAnim.from, to, easeOut(k)); if (k >= 1) { Q = to.slice(); rotAnim = null; } }
   draw();
-  if (zoomAnim || panAnim || rotAnim || focusAnim || (demo && demo.playing)) raf = requestAnimationFrame(tick);
+  if (zoomAnim || panAnim || rotAnim || focusAnim || dyAnim) raf = requestAnimationFrame(tick);
   else if (fullPending && pointers.size === 0) { fullPending = false; raf = requestAnimationFrame(tick); }
 }
 function requestFrame() { if (!raf) raf = requestAnimationFrame(tick); }
@@ -1614,7 +1685,7 @@ function requestFrame() { if (!raf) raf = requestAnimationFrame(tick); }
 function zoomBy(dec) {
   const to = Math.max(0, Math.min(zoomMax, (zoomAnim ? zoomAnim.to : logS) + dec));
   zoomAnim = { from: logS, to, t0: performance.now(), dur: Math.max(1, Math.abs(to - logS) * MS_PER_DECADE),
-               anchor: !st.lock, sx: W / 2, sy: H / 2 };
+               anchor: !st.lock, sx: W / 2, sy: midY() };
   requestFrame();
 }
 function returnToCenter() { if (panX || panY) { panAnim = { x: panX, y: panY, t0: performance.now(), dur: 320 }; requestFrame(); } }
@@ -1626,11 +1697,11 @@ function resetView() { rotAnim = { from: Q.slice(), t0: performance.now(), dur: 
 function pickRegion(sx, sy) {
   const ppm = pxPerPm(), b = basis(), Pw = worldAt(sx, sy, ppm, b), Fw = dot3(F, b.w);
   const t = surf ? surf.t : orb.tPick, R = orb.rDom, ds = R / 1500;
-  const sh = (st.modes.points || st.modes.cubes) ? slabHalf(ppm) : Infinity;
+  const sh = (st.modes.points || st.modes.cubes) ? slabHalf(ppm) : Infinity, cut = activeCut();
   for (let s = R - Fw; s >= -R - Fw; s -= ds) {                 // s = profondità rispetto al punto di mira (verso chi guarda = positiva)
     if (Math.abs(s) > sh) continue;
     const X = Pw[0] + b.w[0] * s, Y = Pw[1] + b.w[1] * s, Z = Pw[2] + b.w[2] * s;
-    if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+    if (cut && X * cut.n[0] + Y * cut.n[1] + Z * cut.n[2] > cut.d) continue;
     const v = orb.psi(X, Y, Z);
     if (v * v <= t) continue;
     const d = orb.domainOf(X, Y, Z);
@@ -1651,8 +1722,9 @@ function setHidden(mask) { hideMask = mask >>> 0; syncPanels(); requestFrame(); 
 const pointers = new Map();
 let mode = 'none', last = null, two = null, tap = null, hideTool = false;
 const pts2 = () => [...pointers.values()];
+let keepGraph = false;                               // un tocco sulla fetta non chiude il grafico: si decide al rilascio
 cnv.addEventListener('pointerdown', e => {
-  closePanels();
+  if (!keepGraph || pointers.size > 0) { keepGraph = false; closePanels(); }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   try { cnv.setPointerCapture(e.pointerId); } catch (err) {}
   rotAnim = null; focusAnim = null;
@@ -1669,7 +1741,7 @@ cnv.addEventListener('pointermove', e => {
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (mode === 'rotate' && pointers.size === 1) {
-    if (tap && !tap.moved) { if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8) return; tap.moved = true; }   // sotto 8 pixel è un tocco, non una rotazione
+    if (tap && !tap.moved) { if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8) return; tap.moved = true; if (keepGraph) { keepGraph = false; closePanels(); } }   // sotto 8 pixel è un tocco, non una rotazione
     const k = Math.PI / (2 * baseRadius()), dx = e.clientX - last.x, dy = e.clientY - last.y;
     Q = qnorm(qmul(qmul(qaxis(1, 0, 0, dy * k), qaxis(0, 1, 0, dx * k)), Q));   // attorno al punto al centro dello schermo
     last = { x: e.clientX, y: e.clientY }; requestFrame();
@@ -1694,10 +1766,13 @@ function endPointer(e) {
   if (!pointers.has(e.pointerId)) return;
   pointers.delete(e.pointerId);
   if (pointers.size === 0) {
-    if (mode === 'rotate' && tap && !tap.moved && performance.now() - tap.t < 500 && hideTool) {
+    const isTap = mode === 'rotate' && tap && !tap.moved && performance.now() - tap.t < 500;
+    if (isTap && hideTool) {
       const d = pickRegion(tap.x, tap.y);
       if (d >= 0) setHidden(hideMask | (1 << d));
-    }
+    } else if (isTap && slice.on && slicePick(tap.x, tap.y)) { updateGraph(); requestFrame(); }
+    else if (keepGraph) closePanels();
+    keepGraph = false;
     if (st.lock && (mode === 'two' || mode === 'mousepan' || mode === 'wait')) returnToCenter();
     mode = 'none'; tap = null; if (fullPending) requestFrame();
   }
@@ -1718,14 +1793,23 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
 /* ---------- 10. Pannelli e avvio ---------- */
 const panel = $('panel'), statePanel = $('statePanel');
-function togglePanel(p, btn, open) { if (open) { closePanels(); p.hidden = false; btn.setAttribute('aria-expanded', 'true'); } else { p.hidden = true; btn.setAttribute('aria-expanded', 'false'); } }
+function togglePanel(p, btn, open) {
+  if (open) { closePanels(); p.hidden = false; btn.setAttribute('aria-expanded', 'true'); } else { p.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  if (p.id === 'graphPanel') shiftView();
+}
+function shiftView() {                                   // l'atomo va al centro dello spazio sopra il pannello del grafico
+  const gp = $('graphPanel'), to = gp.hidden ? 0 : Math.min(0, gp.getBoundingClientRect().top / 2 + 14 - H / 2);
+  if (Math.abs(to - (dyAnim ? dyAnim.to : viewDY)) < 0.5) return;
+  dyAnim = { from: viewDY, to, t0: performance.now(), dur: 320 }; requestFrame();
+}
 function closePanels() { togglePanel(panel, $('settings'), false); togglePanel(statePanel, $('stateBtn'), false); togglePanel(infoPanel, $('infoBtn'), false); togglePanel(graphPanel, $('graphBtn'), false); }
 $('settings').addEventListener('click', () => togglePanel(panel, $('settings'), panel.hidden));
 $('stateBtn').addEventListener('click', () => togglePanel(statePanel, $('stateBtn'), statePanel.hidden));
 const infoPanel = $('infoPanel');
 document.addEventListener('pointerdown', e => {                // toccando fuori da un pannello aperto, si chiude
   const t = e.target;
-  if (t.closest('.panel') || t.closest('#settings') || t.closest('#stateBtn') || t.closest('#infoBtn') || t.closest('#graphBtn') || t.closest('#sphereChip')) return;
+  if (t.closest('.panel') || t.closest('#settings') || t.closest('#stateBtn') || t.closest('#infoBtn') || t.closest('#graphBtn') || t.closest('.chip')) return;
+  if (t === cnv && !graphPanel.hidden && slice.on) { keepGraph = true; return; }
   closePanels();
 }, true);
 /* ---------- frecce: stato più alto o più basso, in ordine di energia (tempo fermo) ----------
@@ -1743,180 +1827,220 @@ function stepState(d) {
 $('stUp').addEventListener('click', () => stepState(1));
 $('stDown').addEventListener('click', () => stepState(-1));
 
-/* ---------- grafico dell'onda in funzione della distanza dal protone ----------
-   Lungo una qualsiasi retta che parte dal protone l'onda ha sempre la stessa forma, data dalla parte che dipende solo
-   dalla distanza: cambia solo l'altezza, e in alcune direzioni il segno. In verticale c'è l'onda divisa per il suo
-   valore massimo (quindi va da −1 a 1), calcolata con la stessa formula della vista 3D in ogni punto disegnato.
-   Gesti: un dito trascina, due dita ingrandiscono (in orizzontale l'asse delle distanze, in verticale quello dell'onda),
-   un tocco legge il valore in quel punto, due tocchi rapidi tornano alla vista intera. */
+/* ---------- Grafico dell'onda: i valori lungo la linea tratteggiata della fetta, o la probabilità a ogni distanza ----------
+   "Lungo la linea": l'onda ψ e la densità |ψ|² nei punti della linea, divise per il massimo dello stato in tutto lo spazio
+   (1 = il punto più alto; stessa scala della luminosità della fetta), calcolate con la formula esatta per ogni punto
+   disegnato. "Distanza dal protone": P(r) = r²·R(r)², la probabilità per ogni picometro di distanza sommando tutte le
+   direzioni; l'area sotto la curva tra due distanze è la probabilità di trovare l'elettrone lì in mezzo.
+   Gesti: un dito tocca o trascina = sposta il punto (o sceglie la distanza); due dita = ingrandiscono e spostano in
+   orizzontale; due tocchi = vista intera. L'asse verticale si adatta ai valori visibili. */
 const graphPanel = $('graphPanel'), gcv = $('graphCv'), gctx = gcv.getContext('2d');
-let gView = null, gCursor = null, gNorm = 1, gKey = '', gMode = 'psi', gSphere = true;
-/* valore disegnato: l'onda ψ (con il segno) oppure la densità di probabilità |ψ|², entrambe divise per il loro massimo */
-const gVal = r => { const v = orb.R(r) / gNorm; return gMode === 'dens' ? v * v : v; };
-$('graphBtn').addEventListener('click', () => { togglePanel(graphPanel, $('graphBtn'), graphPanel.hidden); if (!graphPanel.hidden) { sizeGraph(); drawGraph(); } requestFrame(); });
-$('gBuildBtn').addEventListener('click', startDemo);
-function sizeGraph() {                                   // il pannello usa lo spazio libero tra le scritte in alto e la barra
-  const free = window.innerHeight - 62 - 96 - 16;        // barra in basso, scritte in alto, margini
-  const other = graphPanel.offsetHeight - gcv.offsetHeight;                  // pulsanti, didascalia, margini
-  gcv.style.height = Math.max(200, Math.min(300, free - other)) + 'px';
-}
-function graphFrame() {                               // margini del riquadro del grafico
-  const cw = gcv.clientWidth, ch = gcv.clientHeight;
-  return { cw, ch, L: 40, R: cw - 8, T: 30, B: ch - 32 };
-}
-function graphDefaults() {
-  let mx = 0;
-  for (let i = 0; i <= 4000; i++) { const v = Math.abs(orb.R(orb.rTail * i / 4000)); if (v > mx) mx = v; }
-  gNorm = (mx || 1) * Math.sign(orb.R(orb.r99 * 1e-4) || 1);         // la parte vicina al protone è positiva
-  const x1 = orb.r99 * 1.15;
-  let hi = 0, lo = 0;
-  for (let i = 0; i <= 2000; i++) { const v = gVal(x1 * i / 2000); hi = Math.max(hi, v); lo = Math.min(lo, v); }
-  const pad = 0.06 * (hi - lo || 1);
-  return { x0: 0, x1, y0: lo < 0 ? lo - pad : 0, y1: hi + pad };       // senza valori negativi lo zero sta sull'asse
-}
+let gWin = null, selSphere = null;
+const MINUS = '−';
 function niceStep(span, target) {
   const raw = span / target, p = Math.pow(10, Math.floor(Math.log10(raw)));
   return [1, 2, 5, 10].map(s => s * p).find(s => s >= raw) || 10 * p;
 }
 function fmtTick(v, step) {
-  const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
-  return formatNumber(+v.toFixed(Math.min(dec, 6)), Math.min(dec, 6));
+  const dec = Math.min(6, Math.max(0, -Math.floor(Math.log10(step) + 1e-9)));
+  return formatNumber(+v.toFixed(dec), dec).replace('-', MINUS);
 }
+function fmtN(v, sig) { if (!isFinite(v)) return '—'; if (v === 0) return '0'; return (v < 0 ? MINUS : '') + formatNumber(+Math.abs(v).toPrecision(sig)); }
+function fmtLen(pm) { return Math.abs(pm) >= 1 || pm === 0 ? fmtN(pm, 4) + ' pm' : fmtN(pm * 1e3, 4) + ' fm'; }
+function sciHTML(v, sig) {
+  if (v === 0) return '0';
+  let e = Math.floor(Math.log10(Math.abs(v))), s = (Math.abs(v) / Math.pow(10, e)).toFixed(sig - 1);
+  if (+s >= 10) { e++; s = (Math.abs(v) / Math.pow(10, e)).toFixed(sig - 1); }
+  return (v < 0 ? MINUS : '') + s.replace('.', ',') + (e === 0 ? '' : ' × 10<sup>' + String(e).replace('-', MINUS) + '</sup>');
+}
+const relHTML = v => (Math.abs(v) >= 1e-3 ? (v > 0 ? '+' : v < 0 ? MINUS : '') + formatNumber(Math.abs(v), 3) : (v > 0 ? '+' : '') + sciHTML(v, 2));
+const pctHTML = v => (v >= 1e-3 || v === 0 ? fmtN(v, 3) : sciHTML(v, 2)) + ' %';
+function linePoint(t) {                                // punto della scena sulla linea, a coordinata t lungo la linea
+  const P = PLANES[slice.plane], u = slice.line === 'h' ? t : slice.pu, v = slice.line === 'h' ? slice.pv : t;
+  return [0, 1, 2].map(i => P.e1[i] * u + P.e2[i] * v + P.n[i] * slice.w);
+}
+const Pr = r => { const R = orb.R(r); return r * r * R * R; };     // per pm
+function probWithin(r) {                               // probabilità entro la distanza r (Simpson, 2000 intervalli)
+  if (r <= 0) return 0;
+  const n = 2000, h = r / n; let s = Pr(0) + Pr(r);
+  for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * Pr(i * h);
+  return Math.min(1, s * h / 3);
+}
+function graphDefaults() { const R = 1.15 * orb.r99; return slice.tab === 'dist' ? { x0: 0, x1: R } : { x0: -R, x1: R }; }
+function sizeGraph() {                                 // il grafico usa lo spazio libero, lasciando visibile l'atomo sopra
+  const other = graphPanel.offsetHeight - gcv.offsetHeight;
+  gcv.style.height = Math.max(150, Math.min(200, window.innerHeight - 62 - 330 - other)) + 'px';
+}
+function graphFrame() { const cw = gcv.clientWidth, ch = gcv.clientHeight; return { cw, ch, L: 40, R: cw - 6, T: 13, B: ch - 26 }; }
+function updateGraph() { syncSliceUI(); if (!graphPanel.hidden && orb) drawGraph(); }
 function drawGraph() {
-  if (graphPanel.hidden || !orb) return;
-  const key = st.n + ',' + st.l + ',' + st.m + ',' + st.free + ',' + gMode;
-  if (key !== gKey || !gView) { const keepCursor = gKey.split(',').slice(0, 4).join() === key.split(',').slice(0, 4).join(); gView = graphDefaults(); if (!keepCursor) gCursor = null; gKey = key; }
-  const dpr = Math.min(window.devicePixelRatio || 1, 3), F_ = graphFrame(), { cw, ch, L, R, T, B } = F_;
+  const key = [st.n, st.l, st.m, st.free, slice.tab].join();
+  if (!gWin || gWin.key !== key) gWin = Object.assign(graphDefaults(), { key });
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), { cw, ch, L, R, T, B } = graphFrame();
   if (gcv.width !== Math.round(cw * dpr) || gcv.height !== Math.round(ch * dpr)) { gcv.width = Math.round(cw * dpr); gcv.height = Math.round(ch * dpr); }
   const g = gctx; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cw, ch);
-  const { x0, x1, y0, y1 } = gView;
-  const fm = (x1 - x0) < 3;                                          // intervallo sotto 3 pm: distanze in femtometri
-  const X = r => L + (r - x0) / (x1 - x0) * (R - L), Y = v => B - (v - y0) / (y1 - y0) * (B - T);
-  g.font = '10.5px system-ui, sans-serif';
-  /* griglia e tacche */
-  const sx = niceStep((x1 - x0) * (fm ? 1e3 : 1), 5), sy = niceStep(y1 - y0, 4);
-  g.strokeStyle = '#262626'; g.lineWidth = 1; g.fillStyle = '#a8a8a8';
-  g.textAlign = 'center';
-  for (let v = Math.ceil(x0 * (fm ? 1e3 : 1) / sx) * sx; v <= x1 * (fm ? 1e3 : 1) + 1e-9; v += sx) {
-    const x = Math.round(X(fm ? v / 1e3 : v)) + 0.5;
-    g.beginPath(); g.moveTo(x, T); g.lineTo(x, B); g.stroke();
-    g.fillText(fmtTick(v, sx), x, B + 13);
+  const { x0, x1 } = gWin, fm = x1 - x0 < 3, X = t => L + (t - x0) / (x1 - x0) * (R - L);
+  const dist = slice.tab === 'dist', panels = dist ? ['P'] : orb.iso ? ['dens'] : ['psi', 'dens'];
+  /* campioni: due per pixel, più il punto scelto e (se la linea passa per il nucleo) il nucleo esatto */
+  const K = Math.max(200, Math.round((R - L) * 2)), ts = [];
+  for (let i = 0; i <= K; i++) ts.push(x0 + (x1 - x0) * i / K);
+  const tm = dist ? selSphere : slice.line === 'h' ? slice.pu : slice.pv;
+  if (tm !== null && tm >= x0 && tm <= x1) ts.push(tm);
+  if (!dist && (slice.line === 'h' ? slice.pv : slice.pu) === 0 && slice.w === 0 && x0 < 0 && x1 > 0) ts.push(0);
+  ts.sort((a, b) => a - b);
+  const xs = dist ? ts.filter(t => t >= 0) : ts, k = 1 / Mpsi;
+  const vals = { psi: [], dens: [], P: [] }, sg = [];
+  for (const t of xs) {
+    if (dist) { vals.P.push(100 * Pr(t)); continue; }
+    const p = linePoint(t), v = orb.psi(p[0], p[1], p[2]) * k;
+    vals.psi.push(v); vals.dens.push(v * v); sg.push(v);
   }
-  g.textAlign = 'right';
-  for (let v = Math.ceil(y0 / sy) * sy; v <= y1 + 1e-12; v += sy) {
-    const y = Math.round(Y(v)) + 0.5;
-    g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke();
-    g.fillText(fmtTick(Math.abs(v) < 1e-12 ? 0 : v, sy), L - 5, y + 3.5);
+  const n = panels.length, gap = 19, ph = (B - T - (n - 1) * gap) / n;
+  g.font = '10.5px system-ui, -apple-system, sans-serif';
+  panels.forEach((kind, idx) => {
+    const top = T + idx * (ph + gap), bot = top + ph, ys = vals[kind];
+    let lo = 0, hi = 0;
+    for (const v of ys) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (!(hi - lo > 0)) { if (kind === 'psi') { lo = -1; hi = 1; } else hi = kind === 'P' ? 1 : 1; }
+    const pad = 0.08 * (hi - lo); if (hi > 0) hi += pad; if (lo < 0) lo -= pad;
+    const sy = niceStep(hi - lo, Math.max(2, Math.floor(ph / 22))), Y = v => bot - (v - lo) / (hi - lo) * (bot - top);
+    /* griglia, tacche, titolo */
+    g.lineWidth = 1; g.strokeStyle = '#262626'; g.fillStyle = '#a8a8a8'; g.textAlign = 'right';
+    for (let v = Math.ceil(lo / sy) * sy; v <= hi + 1e-12; v += sy) {
+      const y = Math.round(Y(v)) + 0.5;
+      g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke();
+      g.fillText(fmtTick(Math.abs(v) < sy * 1e-6 ? 0 : v, sy), L - 5, y + 3.5);
+    }
+    g.strokeStyle = '#8a8a8a'; g.beginPath(); g.moveTo(L + 0.5, top); g.lineTo(L + 0.5, bot); g.stroke();
+    if (lo < 0 && hi > 0) { g.strokeStyle = '#7a7a7a'; g.beginPath(); g.moveTo(L, Math.round(Y(0)) + 0.5); g.lineTo(R, Math.round(Y(0)) + 0.5); g.stroke(); }
+    g.fillStyle = '#c8c8c8'; g.textAlign = 'left';
+    g.fillText(kind === 'psi' ? 'onda ψ   (1 = massimo dello stato)' : kind === 'dens' ? 'densità |ψ|²   (1 = massimo dello stato)'
+      : 'probabilità per ogni pm di distanza (%)', L + 2, top - 4);
+    /* curva: area colorata con il segno dell'onda (neutra senza direzione o per la distanza) */
+    g.save(); g.beginPath(); g.rect(L + 1, top, R - L - 1, bot - top); g.clip();
+    const cP = 'rgb(' + colPlus().join(',') + ')', cN = 'rgb(' + colMinus().join(',') + ')', cZ = 'rgb(' + COL_NEUTRAL.join(',') + ')', y0 = Y(0);
+    g.globalAlpha = 0.3;
+    for (let i = 0; i + 1 < xs.length; i++) {
+      g.fillStyle = kind === 'P' ? cZ : (sg[i] + sg[i + 1]) >= 0 ? cP : cN;
+      g.beginPath(); g.moveTo(X(xs[i]), y0); g.lineTo(X(xs[i]), Y(ys[i])); g.lineTo(X(xs[i + 1]), Y(ys[i + 1])); g.lineTo(X(xs[i + 1]), y0); g.closePath(); g.fill();
+    }
+    g.globalAlpha = 1; g.strokeStyle = '#ededed'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.beginPath();
+    xs.forEach((t, i) => { const x = X(t), y = Y(ys[i]); if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.stroke();
+    /* punto scelto */
+    if (tm !== null && tm >= x0 && tm <= x1) {
+      const x = Math.round(X(tm)) + 0.5;
+      g.strokeStyle = '#6aa4ff'; g.lineWidth = 1; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bot); g.stroke(); g.setLineDash([]);
+      let v;
+      if (kind === 'P') v = 100 * Pr(tm); else { const p = linePoint(tm), w = orb.psi(p[0], p[1], p[2]) * k; v = kind === 'psi' ? w : w * w; }
+      g.fillStyle = '#6aa4ff'; g.beginPath(); g.arc(X(tm), Y(v), 3.5, 0, 2 * Math.PI); g.fill();
+    }
+    g.restore();
+  });
+  /* asse orizzontale */
+  const ux = fm ? 1e3 : 1, sx = niceStep((x1 - x0) * ux, Math.max(3, Math.floor((R - L) / 70)));
+  g.strokeStyle = '#8a8a8a'; g.lineWidth = 1; g.beginPath(); g.moveTo(L, B + 0.5); g.lineTo(R, B + 0.5); g.stroke();
+  g.fillStyle = '#a8a8a8'; g.textAlign = 'center';
+  for (let v = Math.ceil(x0 * ux / sx) * sx; v <= x1 * ux + 1e-9; v += sx) {
+    const x = Math.round(X(v / ux)) + 0.5;
+    g.strokeStyle = '#8a8a8a'; g.beginPath(); g.moveTo(x, B); g.lineTo(x, B + 4); g.stroke();
+    g.fillText(fmtTick(Math.abs(v) < sx * 1e-6 ? 0 : v, sx), x, B + 13);
   }
-  /* assi */
-  g.strokeStyle = '#8a8a8a'; g.beginPath(); g.moveTo(L + 0.5, T); g.lineTo(L + 0.5, B); g.lineTo(R, B + 0.5); g.stroke();
-  if (y0 < 0 && y1 > 0) { g.strokeStyle = '#6e6e6e'; g.beginPath(); g.moveTo(L, Math.round(Y(0)) + 0.5); g.lineTo(R, Math.round(Y(0)) + 0.5); g.stroke(); }
-  g.fillStyle = '#c8c8c8'; g.textAlign = 'right'; g.fillText('distanza dal protone (' + (fm ? 'fm' : 'pm') + ')', R, B + 27);
-  g.textAlign = 'left'; g.fillText(gMode === 'dens' ? 'densità di probabilità |ψ|² (1 = massimo)' : 'onda ψ (1 = massimo)', 2, 11);
-  /* curva, calcolata a ogni pixel */
-  const K = Math.max(200, Math.round((R - L) * 2)), rs = [], vs = [];
-  for (let i = 0; i <= K; i++) { const r = x0 + (x1 - x0) * i / K; rs.push(r); vs.push(r < 0 ? NaN : gVal(r)); }
-  g.save(); g.beginPath(); g.rect(L + 1, T, R - L - 1, B - T); g.clip();
-  const cP = 'rgb(' + colPlus().join(',') + ')', cN = 'rgb(' + colMinus().join(',') + ')', y00 = Y(0);
-  g.globalAlpha = 0.3;
-  for (let i = 0; i < K; i++) {
-    if (isNaN(vs[i]) || isNaN(vs[i + 1])) continue;
-    g.fillStyle = (vs[i] + vs[i + 1]) >= 0 ? cP : cN;
-    g.beginPath(); g.moveTo(X(rs[i]), y00); g.lineTo(X(rs[i]), Y(vs[i])); g.lineTo(X(rs[i + 1]), Y(vs[i + 1])); g.lineTo(X(rs[i + 1]), y00); g.closePath(); g.fill();
+  g.fillStyle = '#c8c8c8'; g.textAlign = 'right';
+  g.fillText((dist ? 'distanza dal protone' : PLANES[slice.plane].ax[slice.line === 'h' ? 0 : 1] + ' lungo la linea') + ' (' + (fm ? 'fm' : 'pm') + ')', R, B + 24);
+  /* valori nel punto, in parole */
+  const read = $('graphRead');
+  let html;
+  if (dist) {
+    html = selSphere === null ? 'Tocca il grafico: scegli una distanza e nel 3D compare la sua sfera.'
+      : '<b>' + fmtLen(selSphere) + ' dal protone</b> · per ogni pm di distanza: ' + pctHTML(100 * Pr(selSphere)) + ' · più vicino di così: ' + pctHTML(100 * probWithin(selSphere));
+  } else {
+    const p = linePoint(slice.line === 'h' ? slice.pu : slice.pv), v = orb.psi(p[0], p[1], p[2]), a = v * k;
+    html = '<b>Punto</b> x ' + fmtN(p[0], 4) + ' · y ' + fmtN(-p[2], 4) + ' · z ' + fmtN(p[1], 4) + ' pm · dal protone ' + fmtLen(Math.hypot(p[0], p[1], p[2])) + '<br>' +
+      (orb.iso ? 'senza direzione: solo densità · ' : 'onda ' + relHTML(a) + ' · ') + 'densità ' + relHTML(a * a).replace('+', '') + ' · in un cubetto di 1 pm: ' + sciHTML(v * v, 3);
   }
-  g.globalAlpha = 1; g.strokeStyle = '#ededed'; g.lineWidth = 1.5; g.beginPath();
-  let started = false;
-  vs.forEach((v, i) => { if (isNaN(v)) return; const x = X(rs[i]), y = Y(v); if (started) g.lineTo(x, y); else { g.moveTo(x, y); started = true; } });
-  g.stroke();
-  /* zeri */
-  g.strokeStyle = '#d8d8d8'; g.lineWidth = 1;
-  for (const r0 of orb.coef.radNodes) if (r0 >= x0 && r0 <= x1) { g.beginPath(); g.arc(X(r0), y00, 3, 0, 2 * Math.PI); g.stroke(); }
-  /* cursore di lettura */
-  if (gCursor !== null && gCursor >= x0 && gCursor <= x1) {
-    const v = gVal(gCursor), x = X(gCursor);
-    g.strokeStyle = '#6aa4ff'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x + 0.5, T); g.lineTo(x + 0.5, B); g.stroke(); g.setLineDash([]);
-    g.fillStyle = '#6aa4ff'; g.beginPath(); g.arc(x, Y(v), 3.5, 0, 2 * Math.PI); g.fill();
-  }
-  g.restore();
-  if (gCursor !== null) {
-    const v = gVal(gCursor), zero = orb.coef.radNodes.find(z => Math.abs(z - gCursor) < 1e-9 * Math.max(1, z));
-    const d = fm ? formatNumber(+(gCursor * 1e3).toPrecision(5)) + ' fm' : formatNumber(+gCursor.toPrecision(5)) + ' pm';
-    const t = zero !== undefined ? 'zero a ' + d : d + ':  ' + formatNumber(+v.toPrecision(3));
-    g.fillStyle = '#6aa4ff'; g.textAlign = 'right'; g.fillText(t, R, 24);
-  }
-  /* didascalia */
-  const sym = st.l === 0 || orb.iso;                // il valore dipende solo dalla distanza?
-  let cap = gMode === 'dens'
-    ? 'Densità di probabilità: quanto è probabile trovare l\'elettrone in un punto a quella distanza. '
-    : 'Onda: il valore con il segno; la probabilità è il suo quadrato. ';
-  if (st.l === 0) cap += 'Uguale in ogni direzione.';
-  else if (orb.iso) cap += 'Senza direzione: uguale in ogni direzione (media degli orientamenti).';
-  else cap += 'Con una direzione: lungo ogni retta stessa forma, ma l\'altezza cambia con la direzione.';
-  const zs = orb.coef.radNodes;
-  let z = zs.length ? 'Zero a ' + zs.map(v => formatNumber(+v.toPrecision(4))).join('; ') + ' pm: i gusci vuoti del 3D.' : 'Mai zero lungo la retta.';
-  if (st.l > 0) z += ' Zero anche sul protone.';
-  $('graphCap').innerHTML = cap + '<br>' + z + '<br>Tocca: leggi un valore' + (gSphere ? ' e vedi la sfera di quella distanza' : '') + '. Trascina e allarga le dita: esplora. Due tocchi: vista intera.';
-  syncSphereChip();
-  $('gBuildBtn').disabled = !sym;
-  graphPanel.querySelectorAll('#gModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === gMode)));
-  $('gSphereBtn').setAttribute('aria-pressed', String(gSphere));
+  read.innerHTML = html;
 }
-graphPanel.querySelectorAll('#gModeSeg button').forEach(b => b.addEventListener('click', () => { gMode = b.dataset.g; drawGraph(); }));
-$('gSphereBtn').addEventListener('click', () => { gSphere = !gSphere; drawGraph(); requestFrame(); });
+function syncSliceUI() {
+  if (!orb) return;
+  const iso = orb.iso;
+  graphPanel.querySelectorAll('#sShowSeg button').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.s === sliceShow())); b.disabled = iso && b.dataset.s === 'psi'; });
+  graphPanel.querySelectorAll('#sPlaneSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === slice.plane)));
+  graphPanel.querySelectorAll('#gTabSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === slice.tab)));
+  const Rf = sliceRadius();
+  $('sPos').value = Math.round(1000 * slice.w / Rf);
+  $('sPosVal').textContent = 'piano ' + PLANES[slice.plane].ax[2] + ' = ' + fmtLen(slice.w);
+  $('gLineBtn').hidden = slice.tab === 'dist';
+  $('gLineBtn').innerHTML = slice.line === 'h' ? '<svg viewBox="0 0 18 18"><path d="M2 9h14M5 6L2 9l3 3M13 6l3 3-3 3"/></svg>'
+                                                : '<svg viewBox="0 0 18 18"><path d="M9 2v14M6 5l3-3 3 3M6 13l3 3 3-3"/></svg>';
+  syncChips();
+}
+/* cambiare la fetta cambia anche il taglio della nuvola */
+function setSlice(chg) {
+  Object.assign(slice, chg);
+  exposureDirty = true; if (vox) vox.k = cubeExposure();
+  syncPanels(); updateGraph(); updateStatus(); requestFrame();
+}
+graphPanel.querySelectorAll('#sShowSeg button').forEach(b => b.addEventListener('click', () => setSlice({ show: b.dataset.s })));
+graphPanel.querySelectorAll('#sPlaneSeg button').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.p === slice.plane) return;
+  setSlice({ plane: b.dataset.p, w: 0 });
+  if (sliceGeom(1, 0, 0, basis()).facing < 0.2) faceOn();     // se la faccia non si vede da qui, la vista si gira verso di lei
+}));
+graphPanel.querySelectorAll('#gTabSeg button').forEach(b => b.addEventListener('click', () => { slice.tab = b.dataset.t; updateGraph(); }));
+$('gLineBtn').addEventListener('click', () => { slice.line = slice.line === 'h' ? 'v' : 'h'; updateGraph(); requestFrame(); });
+$('sPos').addEventListener('input', e => setSlice({ w: e.target.value / 1000 * sliceRadius() }));
+$('sFace').addEventListener('click', faceOn);
+function faceOn() { rotAnim = { from: Q.slice(), to: faceOnQ(), t0: performance.now(), dur: 600 }; requestFrame(); }
+$('graphBtn').addEventListener('click', () => {
+  const open = graphPanel.hidden;
+  togglePanel(graphPanel, $('graphBtn'), open);
+  if (open) { if (!slice.on) setSlice({ on: true }); sizeGraph(); updateGraph(); shiftView(); }
+  requestFrame();
+});
 /* gesti sul grafico */
 const gPtr = new Map();
-let gStart = null, gTapT = 0, gTap = null;
+let gPinch = null, gTap = null, gLastTap = 0;
 function gLocal(e) { const r = gcv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function gScrub(x) {
+  const { L, R } = graphFrame(), t = gWin.x0 + (x - L) / (R - L) * (gWin.x1 - gWin.x0);
+  if (slice.tab === 'dist') selSphere = Math.max(0, t);
+  else if (slice.line === 'h') slice.pu = t; else slice.pv = t;
+  updateGraph(); requestFrame();
+}
 gcv.addEventListener('pointerdown', e => {
   gcv.setPointerCapture(e.pointerId); gPtr.set(e.pointerId, gLocal(e));
-  gStart = { view: Object.assign({}, gView), pts: [...gPtr.values()].map(p => ({ ...p })) };
-  if (gPtr.size === 1) gTap = { ...gLocal(e), t: performance.now(), moved: false }; else gTap = null;
+  if (gPtr.size === 1) { gTap = { ...gLocal(e), t: e.timeStamp }; gScrub(gTap.x); }
+  else if (gPtr.size === 2) { const [a, b] = [...gPtr.values()]; gPinch = { a: a.x, b: b.x, win: { x0: gWin.x0, x1: gWin.x1 } }; gTap = null; }
 });
 gcv.addEventListener('pointermove', e => {
-  if (!gPtr.has(e.pointerId) || !gStart) return;
+  if (!gPtr.has(e.pointerId)) return;
   gPtr.set(e.pointerId, gLocal(e));
-  const { L, R, T, B } = graphFrame(), v = gStart.view, pts = [...gPtr.values()];
-  const kx = (v.x1 - v.x0) / (R - L), ky = (v.y1 - v.y0) / (B - T);
-  if (pts.length === 1 && gStart.pts.length === 1) {
-    const dx = pts[0].x - gStart.pts[0].x, dy = pts[0].y - gStart.pts[0].y;
-    if (gTap && Math.hypot(dx, dy) > 6) gTap.moved = true;
-    if (gTap && !gTap.moved) return;
-    gView = { x0: v.x0 - dx * kx, x1: v.x1 - dx * kx, y0: v.y0 + dy * ky, y1: v.y1 + dy * ky };
-  } else if (pts.length === 2 && gStart.pts.length === 2) {
-    const a0 = gStart.pts[0], b0 = gStart.pts[1], a = pts[0], b = pts[1];
-    const dx0 = Math.abs(b0.x - a0.x), dy0 = Math.abs(b0.y - a0.y), dx1 = Math.abs(b.x - a.x), dy1 = Math.abs(b.y - a.y);
-    const fx = dx0 > 30 ? Math.max(0.02, dx1 / dx0) : 1, fy = dy0 > 30 ? Math.max(0.02, dy1 / dy0) : 1;
-    const mx0 = (a0.x + b0.x) / 2, my0 = (a0.y + b0.y) / 2, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const cx = v.x0 + (mx0 - L) * kx, cy = v.y1 - (my0 - T) * ky;         // punto del grafico sotto le dita all'inizio
-    const nx = (v.x1 - v.x0) / fx, ny = (v.y1 - v.y0) / fy;
-    const x0 = cx - (mx - L) / (R - L) * nx, y1 = cy + (my - T) / (B - T) * ny;
-    gView = { x0, x1: x0 + nx, y0: y1 - ny, y1 };
+  if (gPtr.size === 1 && !gPinch) { const p = gLocal(e); if (gTap && Math.hypot(p.x - gTap.x, p.y - gTap.y) > 6) gTap.moved = true; gScrub(p.x); }
+  else if (gPtr.size === 2 && gPinch) {
+    const { L, R } = graphFrame(), [a, b] = [...gPtr.values()], w0 = gPinch.win, span0 = w0.x1 - w0.x0;
+    const d0 = Math.abs(gPinch.b - gPinch.a), d1 = Math.abs(b.x - a.x), m0 = (gPinch.a + gPinch.b) / 2, m1 = (a.x + b.x) / 2;
+    const span = d0 > 20 && d1 > 5 ? span0 * d0 / d1 : span0, tAt = w0.x0 + (m0 - L) / (R - L) * span0;
+    let x0 = tAt - (m1 - L) / (R - L) * span;
+    if (slice.tab === 'dist' && x0 < 0) x0 = 0;
+    gWin = { key: gWin.key, x0, x1: x0 + span };
+    drawGraph();
   }
-  if (gView.x0 < 0) { gView.x1 -= gView.x0; gView.x0 = 0; }
-  drawGraph();
 });
 function gEnd(e) {
   if (!gPtr.has(e.pointerId)) return;
   gPtr.delete(e.pointerId);
+  if (gPtr.size < 2) gPinch = null;
   if (gPtr.size === 0) {
-    if (gTap && !gTap.moved && performance.now() - gTap.t < 350) {
-      const now = performance.now();
-      if (now - gTapT < 320) { gView = graphDefaults(); gCursor = null; gTapT = 0; requestFrame(); }   // due tocchi: vista intera
-      else {
-        gTapT = now;
-        const { L, R } = graphFrame(), v = gView, r = v.x0 + (gTap.x - L) / (R - L) * (v.x1 - v.x0);
-        const pxPer = (R - L) / (v.x1 - v.x0);
-        const near = orb.coef.radNodes.find(z => Math.abs(z - r) * pxPer < 8);             // vicino a uno zero: si aggancia
-        gCursor = near !== undefined ? near : Math.max(0, r);
-        requestFrame();
-      }
+    const now = e.timeStamp;                           // istante del gesto, non del momento in cui viene gestito
+    if (gTap && !gTap.moved && now - gTap.t < 300) {
+      if (now - gLastTap < 400) { gWin = Object.assign(graphDefaults(), { key: gWin.key }); gLastTap = 0; drawGraph(); }   // due tocchi: tutto
+      else gLastTap = now;
     }
-    gTap = null; gStart = null;
-  } else gStart = { view: Object.assign({}, gView), pts: [...gPtr.values()].map(p => ({ ...p })) };
-  drawGraph();
+    gTap = null;
+  }
 }
 gcv.addEventListener('pointerup', gEnd); gcv.addEventListener('pointercancel', gEnd);
-window.addEventListener('resize', () => { if (!graphPanel.hidden) { sizeGraph(); drawGraph(); } });
+window.addEventListener('resize', () => { if (!graphPanel.hidden) { sizeGraph(); drawGraph(); shiftView(); } });
 $('infoBtn').addEventListener('click', () => { updateInfoPanel(); togglePanel(infoPanel, $('infoBtn'), infoPanel.hidden); });
 /* la riga delle distanze è calcolata per lo stato scelto */
 function updateInfoPanel() {
@@ -1959,7 +2083,7 @@ statePanel.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('
 }));
 function syncPanels() {
   panel.querySelectorAll('.switch').forEach(s => s.setAttribute('aria-checked', String(settings[s.dataset.key])));
-  $('cutSwitch').setAttribute('aria-checked', String(st.cut));
+  $('cutSwitch').setAttribute('aria-checked', String(st.cut)); $('cutSwitch').disabled = slice.on;
   $('dirSwitch').setAttribute('aria-checked', String(!st.free));
   $('dirRow').hidden = st.l === 0; $('orientRow').hidden = st.l === 0 || st.free;
   if (typeof stateIndex === 'function') { const i = stateIndex(); $('stUp').disabled = i >= STATE_ORDER.length - 1; $('stDown').disabled = i <= 0; }
@@ -1983,17 +2107,21 @@ function setParam(q, v) {
   if (q === 'L' && !allowedL().includes(v)) return;
   st[q] = v;
   if (q === 'n' || q === 'l' || q === 'm' || q === 'free') {
-    if (demo) endDemo();
     st.l = Math.min(st.l, st.n - 1); st.m = Math.max(-st.l, Math.min(st.l, st.m));
     loadOrbital(); pts = vox = surf = null; voxJob = surfJob = null; ver.points++; ver.cubes++; ver.surface++; queue = [];
   } else if (q === 'N') { buildKernel(); pts = null; ver.points++; queue = queue.filter(t => t.type !== 'points'); }
   else if (q === 'L') { vox = null; voxJob = null; ver.cubes++; queue = queue.filter(t => t.type !== 'slab'); }
   else if (q === 'X') { surf = null; surfJob = null; ver.surface++; queue = queue.filter(t => t.type !== 'threshold' && t.type !== 'mesh'); }
   else if (q === 'cut') { exposureDirty = true; if (vox) vox.k = cubeExposure(); }
-  ensureData(); save(); syncPanels(); if (!infoPanel.hidden) updateInfoPanel(); drawGraph(); draw();
+  ensureData(); save(); syncPanels(); if (!infoPanel.hidden) updateInfoPanel(); updateGraph(); draw();
 }
 function loadOrbital() {
+  const oldR = orb ? sliceRadius() : 0;
   orb = PHYS.makeOrbital(SYS_MSG, st.n, st.l, st.m, st.free);
+  Mpsi = psiMax(orb);
+  /* la fetta e il punto restano nella stessa posizione relativa: la nuvola cambia grandezza da uno stato all'altro */
+  if (oldR > 0) { const f = sliceRadius() / oldR; slice.w *= f; slice.pu *= f; slice.pv *= f; } else slice.pu = 0.3 * orb.r99;
+  sliceTex = null; sliceJob = null; selSphere = null; gWin = null;
   const Ls = allowedL();
   if (!Ls.includes(st.L)) st.L = Ls.reduce((best, L) => (Math.abs(PHYS.cellsPerSide(orb, L) - 101) < Math.abs(PHYS.cellsPerSide(orb, best) - 101) ? L : best), Ls[0]);
   zoomMax = Math.log10(orb.r99 / SYSTEM.nucleus.rms);          // al massimo, il protone riempie lo schermo
