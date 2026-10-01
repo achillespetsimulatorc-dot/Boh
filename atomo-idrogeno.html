@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Atomo di idrogeno</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --panel: #151515;
+    --line: #3a3a3a;
+    --ink: #eaeaea;
+    --muted: #a8a8a8;
+    --press: #262626;
+    --focus: #6aa4ff;
+    --plus: rgb(80, 205, 225);
+    --minus: rgb(245, 150, 70);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; overscroll-behavior: none; }
+  body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #gl, #pts { visibility: hidden; }
+  #pts { mix-blend-mode: screen; pointer-events: none; }   /* i pallini aggiungono luce sopra le altre viste */
+  #gl { pointer-events: none; }
+
+  .info {
+    position: fixed; left: 14px; top: 10px; right: 64px;
+    font-size: 11.5px; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums;
+    pointer-events: none; text-shadow: 0 0 3px #000, 0 0 3px #000;
+  }
+  .info div[hidden], .info span[hidden] { display: none; }
+  #counter { color: var(--ink); margin-right: 8px; }
+  #stateName { color: var(--ink); }
+  .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 3px 0 4px; vertical-align: 0; }
+  .legend span + span { margin-left: 12px; }
+  .legend span[hidden] { display: none; }
+
+  .toolbar {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; gap: 1px; padding: 4px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .toolbar button {
+    width: 36px; height: 38px; margin: 0; padding: 0; border: 0; border-radius: 8px;
+    background: transparent; display: grid; place-items: center; color: var(--ink);
+    cursor: pointer; touch-action: manipulation;
+  }
+  .toolbar button[hidden] { display: none; }
+  .toolbar button:active, .toolbar button[aria-expanded="true"] { background: var(--press); }
+  .toolbar button[aria-pressed="true"] { background: #26344a; }
+  .toolbar button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .toolbar button:disabled { cursor: default; }
+  .toolbar button:disabled svg { opacity: .3; }
+  .toolbar .sep { width: 1px; height: 22px; background: var(--line); margin: 0 2px; }
+  .toolbar svg { width: 17px; height: 17px; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .toolbar svg.gear { width: 18px; height: 18px; stroke-width: 1.6; }
+  .toolbar circle[fill="currentColor"] { fill: var(--ink); stroke: none; }
+  .psi { font: italic 20px/1 "Times New Roman", Georgia, serif; }
+  .ib { font: italic 500 18px/1 Georgia, "Times New Roman", serif; }
+  .info-body { padding: 10px 14px 12px; font-size: 12.5px; line-height: 1.5; }
+  .info-body p { margin: 0 0 8px; }
+  .info-body p:last-child { margin: 0; }
+  .info-body b { font-weight: 500; }
+  .panel.graph { width: min(560px, calc(100vw - 20px)); padding: 8px 10px 10px; box-sizing: border-box; }
+  .panel.graph canvas { display: block; position: static; width: 100%; height: 220px; touch-action: none; }
+  .panel.graph { max-height: none; overflow: visible; }
+  .panel.graph p { margin: 4px 2px 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+  .gbar { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }
+  .panel.demo { width: min(560px, calc(100vw - 20px)); padding: 10px 12px; box-sizing: border-box; }
+  .panel.demo p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--ink); min-height: 54px; }
+  .panel.demo input[type=range] { width: 100%; margin: 0 0 8px; accent-color: #6aa4ff; }
+  .demobtns { display: flex; gap: 6px; }
+  .demobtns .gtoggle { flex: 1; }
+  #sphereChip { pointer-events: auto; margin-top: 4px; border: 1px solid #3d5378; background: #1a2333; color: #9cc1ff;
+    border-radius: 12px; padding: 2px 9px; font: inherit; font-size: 11.5px; cursor: pointer; }
+  #sphereChip[hidden] { display: none; }
+  .seg.small { width: auto; flex: 1; margin: 0; }
+  .seg.small button { min-height: 26px; font-size: 12px; }
+  .gtoggle { min-height: 28px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; touch-action: manipulation; }
+  .gtoggle[aria-pressed="true"] { background: #26344a; border-color: #3d5378; }
+  .gtoggle:disabled { opacity: .35; cursor: default; }
+  .statenav { position: fixed; right: 12px; top: 10px; display: flex; flex-direction: column; gap: 2px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; z-index: 2; }
+  .statenav button { width: 36px; height: 32px; border: 0; border-radius: 7px; background: transparent; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .statenav button:active { background: var(--press); }
+  .statenav button:disabled { cursor: default; }
+  .statenav button:disabled svg { opacity: .3; }
+  .statenav svg { width: 17px; height: 17px; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .panel {
+    position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    width: min(300px, calc(100vw - 28px));
+    max-height: calc(100vh - 150px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--ink);
+  }
+  .panel[hidden] { display: none; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 0 8px 0 12px; font-size: 12.5px; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row[hidden] { display: none; }
+  .switch { position: relative; flex: none; width: 34px; height: 20px; margin: 0; padding: 0; border: 0; border-radius: 12px; background: #4a4a4a; cursor: pointer; touch-action: manipulation; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #f2f2f2; transition: transform .15s ease; }
+  .switch[aria-checked="true"] { background: #6aa4ff; }
+  .switch[aria-checked="true"]::after { transform: translateX(14px); }
+  .switch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .seg { display: flex; width: 100%; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; margin: 6px 0; }
+  .seg button { flex: 1; min-height: 28px; border: 0; background: transparent; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg.multi button[aria-pressed="true"] { background: #eaeaea; color: #000; }
+  .seg button[aria-pressed="true"] { background: #eaeaea; color: #000; }
+  .seg button:disabled { color: #666; cursor: default; }
+  .row.segrow { padding: 0 10px; }
+  .stepper { display: flex; align-items: center; gap: 4px; flex: none; }
+  .stepper button { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: transparent; font: 16px/1 system-ui, sans-serif; color: var(--ink); cursor: pointer; touch-action: manipulation; padding: 0; }
+  .stepper button:active { background: var(--press); }
+  .stepper button:disabled { opacity: .3; cursor: default; }
+  .stepper output { min-width: 74px; font-size: 12.5px; text-align: center; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="pts"></canvas>
+<canvas id="c"></canvas>
+<div class="statenav" role="group" aria-label="Stato più alto o più basso">
+  <button id="stUp" type="button" aria-label="Stato più alto"><svg viewBox="0 0 18 18"><path d="M4 11l5-5 5 5"/></svg></button>
+  <button id="stDown" type="button" aria-label="Stato più basso"><svg viewBox="0 0 18 18"><path d="M4 7l5 5 5-5"/></svg></button>
+</div>
+<div class="info">
+  <div><span id="counter">×1</span><span id="stateName"></span></div>
+  <div id="legend" class="legend"><span id="legendSign">onda <i class="sw" style="background:var(--plus)"></i>+ <i class="sw" style="background:var(--minus)"></i>−</span><span id="legendIso" hidden><i class="sw" style="background:rgb(205,208,222)"></i>nessun segno</span></div>
+  <div id="status"></div>
+  <button type="button" id="sphereChip" hidden></button>
+</div>
+
+<div class="panel" id="statePanel" hidden>
+  <div class="row segrow"><div class="seg multi" id="modeSeg">
+    <button type="button" data-mode="points">Pallini</button>
+    <button type="button" data-mode="cubes">Cubetti</button>
+    <button type="button" data-mode="surface">Superficie</button>
+  </div></div>
+  <div class="row"><span>Livello</span><div class="stepper" data-q="n"></div></div>
+  <div class="row"><span>Forma</span><div class="stepper" data-q="l"></div></div>
+  <div class="row" id="dirRow"><span id="l-dir">Direzione scelta</span><button class="switch" type="button" role="switch" id="dirSwitch" aria-labelledby="l-dir"></button></div>
+  <div class="row" id="orientRow"><span>Orientamento</span><div class="stepper" data-q="m"></div></div>
+  <div class="row" data-for="points"><span>Pallini</span><div class="stepper" data-q="N"></div></div>
+  <div class="row" data-for="cubes"><span>Lato del cubetto</span><div class="stepper" data-q="L"></div></div>
+  <div class="row" data-for="surface"><span>Probabilità dentro</span><div class="stepper" data-q="X"></div></div>
+  <div class="row" data-for="surface"><span>Opacità</span><div class="stepper" data-q="A"></div></div>
+  <div class="row"><span id="l-cut">Taglio a metà</span><button class="switch" type="button" role="switch" id="cutSwitch" aria-labelledby="l-cut"></button></div>
+</div>
+
+<div class="panel demo" id="demoBar" hidden>
+  <p id="demoText"></p>
+  <input type="range" id="demoSlider" min="0" max="300" step="1" value="0" aria-label="Avanzamento">
+  <div class="demobtns">
+    <button type="button" class="gtoggle" id="demoPrev">Indietro</button>
+    <button type="button" class="gtoggle" id="demoPlay">Avvia</button>
+    <button type="button" class="gtoggle" id="demoNext">Avanti</button>
+    <button type="button" class="gtoggle" id="demoClose">Chiudi</button>
+  </div>
+</div>
+
+<div class="panel graph" id="graphPanel" hidden>
+  <div class="gbar">
+    <div class="seg small" id="gModeSeg"><button type="button" data-g="psi">Onda ψ</button><button type="button" data-g="dens">Densità |ψ|²</button></div>
+    <button type="button" class="gtoggle" id="gSphereBtn" aria-pressed="true">Sfera</button>
+    <button type="button" class="gtoggle" id="gBuildBtn">Rotazione</button>
+  </div>
+  <canvas id="graphCv"></canvas>
+  <p id="graphCap"></p>
+</div>
+
+<div class="panel" id="infoPanel" hidden><div class="info-body">
+  <p><b>Pallini.</b> Ogni pallino è una misura della posizione dell'elettrone. Dove sono più fitti, è più probabile trovarlo. La grandezza del pallino serve solo a vederlo.</p>
+  <p><b>Cubetti.</b> Ogni cubetto ha la probabilità di trovare l'elettrone lì dentro. Ogni pixel somma i cubetti che stanno davanti e dietro: più luminoso vuol dire più probabile.</p>
+  <p><b>Pallini e zoom.</b> Ingrandendo, i pallini si diradano fino a sparire: sono un numero fisso di misure, e in un volume minuscolo ne cadono poche. Non vuol dire che lì l'elettrone non possa esserci.</p>
+  <p><b>Superficie.</b> La zona più piccola in cui trovi l'elettrone tante volte su 100 quante scegli tu. Fuori c'è il resto: la nuvola non ha un bordo vero.</p>
+  <p><b>Colori.</b> Azzurro e arancione sono il segno dell'onda, non la probabilità. Quale dei due è positivo è una convenzione.</p>
+  <p><b>Direzione.</b> Un atomo libero non ha una direzione preferita: negli stati eccitati la sua nuvola è sferica e non ha un segno unico (colore neutro). I lobi compaiono solo se qualcosa sceglie una direzione: attivando "Direzione scelta" si vede come sarebbe.</p>
+  <p id="infoDist"></p>
+  <p><b>Protone.</b> In scala vera, circa centomila volte più piccolo della nuvola: si vede solo ingrandendo molto. È una palla di carica positiva, più intensa al centro. Il raggio medio (0,84 femtometri) è misurato; la forma esatta dell'interno è un'approssimazione, perché un'immagine 3D univoca della carica del protone non esiste.</p>
+  <p><b>Calcolo.</b> Tutto viene dalle equazioni della fisica quantistica, con le costanti misurate più precise. Gli effetti trascurati (il magnetismo di elettrone e protone, la relatività) cambiano la nuvola dell'1s di meno di una parte su diecimila.</p>
+</div></div>
+
+<div class="panel" id="panel" hidden>
+  <div class="row"><span id="l-proton">Protone</span><button class="switch" type="button" role="switch" data-key="proton" aria-labelledby="l-proton"></button></div>
+  <div class="row"><span id="l-labels">Etichetta del protone</span><button class="switch" type="button" role="switch" data-key="labels" aria-labelledby="l-labels"></button></div>
+  <div class="row"><span id="l-axes">Supporto visivo artificiale</span><button class="switch" type="button" role="switch" data-key="axes" aria-labelledby="l-axes"></button></div>
+  <div class="row"><span id="l-map">Mappa</span><button class="switch" type="button" role="switch" data-key="map" aria-labelledby="l-map"></button></div>
+  <div class="row"><span id="l-ruler">Righello</span><button class="switch" type="button" role="switch" data-key="ruler" aria-labelledby="l-ruler"></button></div>
+  <div class="row"><span id="l-counter">Contatore dello zoom</span><button class="switch" type="button" role="switch" data-key="counter" aria-labelledby="l-counter"></button></div>
+  <div class="row"><span id="l-name">Nome dello stato</span><button class="switch" type="button" role="switch" data-key="name" aria-labelledby="l-name"></button></div>
+  <div class="row"><span id="l-legend">Legenda dei colori</span><button class="switch" type="button" role="switch" data-key="legend" aria-labelledby="l-legend"></button></div>
+  <div class="row"><span id="l-slab">Profondità limitata ingrandendo</span><button class="switch" type="button" role="switch" data-key="slab" aria-labelledby="l-slab"></button></div>
+  <div class="row"><span id="l-gloss">Riflessi di luce sulla superficie</span><button class="switch" type="button" role="switch" data-key="gloss" aria-labelledby="l-gloss"></button></div>
+</div>
+
+<div class="toolbar" role="toolbar" aria-label="Strumenti">
+  <button id="stateBtn" type="button" aria-label="Stato e viste" aria-expanded="false" aria-controls="statePanel"><span class="psi">ψ</span></button>
+  <button id="settings" type="button" aria-label="Impostazioni" aria-expanded="false" aria-controls="panel"><svg class="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  <button id="graphBtn" type="button" aria-label="Grafico dell'onda" aria-expanded="false" aria-controls="graphPanel"><svg viewBox="0 0 18 18"><path d="M1.5 9h15"/><path d="M1.5 3.5c2.5 0 3 11 5.5 11s3-8 5.5-8 2 2.5 4 2.5"/></svg></button>
+  <button id="infoBtn" type="button" aria-label="Informazioni" aria-expanded="false" aria-controls="infoPanel"><span class="ib">i</span></button>
+  <span class="sep"></span>
+  <button id="out" type="button" aria-label="Riduci 10 volte"><svg viewBox="0 0 18 18"><path d="M3 9h12"/></svg></button>
+  <button id="in" type="button" aria-label="Ingrandisci 10 volte"><svg viewBox="0 0 18 18"><path d="M9 3v12M3 9h12"/></svg></button>
+  <span class="sep"></span>
+  <button id="lock" type="button" aria-label="Fisso al centro sul nucleo" aria-pressed="true"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="5.2"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3"/></svg></button>
+  <button id="reset" type="button" aria-label="Torna all'orientamento iniziale"><svg viewBox="0 0 18 18"><path d="M3.2 7.2A6 6 0 1 1 3 10.5"/><path d="M2.6 3.2v4.2h4.2"/></svg></button>
+  <button id="hide" type="button" aria-label="Nascondi una regione toccandola" aria-pressed="false"><svg viewBox="0 0 18 18"><path d="M1.5 9s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5S1.5 9 1.5 9z"/><circle cx="9" cy="9" r="2.2"/><path d="M2.5 15.5l13-13"/></svg></button>
+  <button id="showAll" type="button" aria-label="Mostra tutte le regioni" hidden><svg viewBox="0 0 18 18"><path d="M1.5 9s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5S1.5 9 1.5 9z"/><circle cx="9" cy="9" r="2.2"/></svg></button>
+</div>
+<script type="text/plain" id="physics">
+'use strict';
+/* =====================================================================================
+   FISICA — funzioni d'onda degli orbitali di un sistema idrogenoide (un elettrone e un nucleo).
+   Unità interne: picometri (pm). Coordinate della scena: X a destra, Y in alto, Z verso chi guarda.
+   Coordinate fisiche usate nelle formule: x = X, y = −Z, z = Y  (l'asse z fisico è verticale).
+
+   Convenzione dei segni (crest = +, avvallamento = −), la stessa dei libri di chimica:
+   · parte radiale positiva vicino al nucleo; cambia segno a ogni superficie sferica di zero;
+   · parte angolare con il segno del suo polinomio: p_x ∝ x, p_z ∝ z, d_xy ∝ xy, d_z² ∝ 3z² − r², …
+   ===================================================================================== */
+const FACT = [1];
+for (let i = 1; i <= 60; i++) FACT[i] = FACT[i - 1] * i;
+const binom = (n, k) => FACT[n] / (FACT[k] * FACT[n - k]);
+
+/* Polinomi di Legendre associati P_l^m(x), m ≥ 0, senza fase di Condon–Shortley (segno = segno del polinomio) */
+function legendreP(l, m, x) {
+  let pmm = 1;
+  if (m > 0) { const s = Math.sqrt(Math.max(0, (1 - x) * (1 + x))); let f = 1; for (let i = 1; i <= m; i++) { pmm *= f * s; f += 2; } }
+  if (l === m) return pmm;
+  let pmmp1 = x * (2 * m + 1) * pmm;
+  if (l === m + 1) return pmmp1;
+  let pll = 0;
+  for (let ll = m + 2; ll <= l; ll++) { pll = (x * (2 * ll - 1) * pmmp1 - (ll + m - 1) * pmm) / (ll - m); pmm = pmmp1; pmmp1 = pll; }
+  return pll;
+}
+
+/* Orbitale reale (n, l, m) del sistema sys = { Z, a } con a = raggio di Bohr ridotto in pm.
+   ψ = R_nl(r) · Y_lm(direzione), entrambe normalizzate: ∫ ψ² dV = 1. */
+/* free = true: atomo libero, senza direzione preferita. Per l > 0 è la miscela, con la stessa probabilità, di tutti gli
+   orientamenti del livello: la densità è R² · 1/(4π), uguale in ogni direzione (somma dei |Y|² di tutti gli m = (2l+1)/4π).
+   Non esiste un segno unico dell'onda: il segno qui è solo quello della parte radiale e va disegnato neutro. */
+function makeOrbital(sys, n, l, m, free) {
+  const Z = sys.Z, a = sys.a, k = n - l - 1, al = 2 * l + 1, am = Math.abs(m);
+  const iso = !!free && l > 0;
+  /* parte radiale: R = N e^(−ρ/2) ρ^l L_k^(2l+1)(ρ),  ρ = 2Zr/(n a) */
+  const Lc = [];
+  for (let i = 0; i <= k; i++) Lc.push((i % 2 ? -1 : 1) * binom(k + al, k - i) / FACT[i]);
+  const sc = 2 * Z / (n * a);
+  const NR = Math.sqrt(sc * sc * sc * FACT[k] / (2 * n * FACT[n + l]));
+  const R = r => { const rho = sc * r; let L = 0; for (let i = k; i >= 0; i--) L = L * rho + Lc[i]; return NR * Math.exp(-rho / 2) * Math.pow(rho, l) * L; };
+  /* parte angolare reale */
+  const NY = iso ? 1 / Math.sqrt(4 * Math.PI) : Math.sqrt((2 * l + 1) / (4 * Math.PI) * FACT[l - am] / FACT[l + am]) * (m === 0 ? 1 : Math.SQRT2);
+  const Y = (x, y, z, r) => {                      // x, y, z fisiche, r = |(x,y,z)|
+    if (iso) return NY;
+    if (r === 0) return l === 0 ? NY : 0;
+    const ct = z / r, P = legendreP(l, am, ct);
+    if (m === 0) return NY * P;
+    const rxy = Math.sqrt(x * x + y * y);
+    let c1 = 1, s1 = 0;
+    if (rxy > 0) { c1 = x / rxy; s1 = y / rxy; }
+    let c = c1, s = s1;                              // cos(φ), sin(φ) → cos(|m|φ), sin(|m|φ) per ricorrenza
+    for (let i = 1; i < am; i++) { const c2 = c * c1 - s * s1; s = s * c1 + c * s1; c = c2; }
+    return NY * P * (m > 0 ? c : s);
+  };
+  const psi = (X, Yc, Zc) => {                     // ψ in un punto della scena (pm)
+    const x = X, y = -Zc, z = Yc, r = Math.sqrt(x * x + y * y + z * z);
+    return R(r) * Y(x, y, z, r);
+  };
+  /* segno dello specchiamento lungo ciascun asse della scena (serve a calcolare un solo ottante) */
+  const cosType = m >= 0;
+  const parX = cosType ? (am % 2 ? -1 : 1) : (am % 2 ? 1 : -1);
+  const parZphys = (l + am) % 2 ? -1 : 1;
+  const parYphys = cosType ? 1 : -1;
+  const parity = iso ? [1, 1, 1] : [parX, parZphys, parYphys];        // assi della scena X, Y (= z fisico), Z (= −y fisico)
+
+  /* tabella radiale: probabilità entro r */
+  const NT = 16384;
+  let rBig = (2 * n * n + 30 * n + 40) * a / Z;
+  const tab = (r1) => {
+    const h = r1 / NT, cum = new Float64Array(NT + 1);
+    let prev = 0;
+    for (let i = 1; i <= NT; i++) { const r = i * h, v = R(r) ** 2 * r * r; cum[i] = cum[i - 1] + 0.5 * (prev + v) * h; prev = v; }
+    return { h, cum };
+  };
+  let t = tab(rBig);
+  const at = p => { for (let i = 0; i <= NT; i++) if (t.cum[i] >= p * t.cum[NT]) return i * t.h; return rBig; };
+  const rTail = at(1 - 1e-12) * 1.02;
+  t = tab(rTail);
+  const tot = t.cum[NT];
+  const cdf = t.cum.map(v => v / tot);
+  const quant = p => { let lo = 0, hi = NT; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cdf[mid] <= p) lo = mid; else hi = mid; } return (lo + (cdf[hi] > cdf[lo] ? (p - cdf[lo]) / (cdf[hi] - cdf[lo]) : 0)) * t.h; };
+  const r99 = quant(0.99);
+  const rDom = quant(1 - 1e-7);                     // oltre: probabilità < 10⁻⁷ (esclusa dai cubetti)
+  /* massimo di Y² (per l'estrazione della direzione) e di ψ² (per la tolleranza dei cubetti) */
+  let Y2max = 0;
+  for (let i = 0; i <= 20000; i++) { const ct = -1 + 2 * i / 20000, P = iso ? NY : NY * legendreP(l, am, ct); if (P * P > Y2max) Y2max = P * P; }
+  const Y2maxPlain = Y2max;
+  Y2max *= 1.002;
+  let R2max = 0;
+  for (let i = 0; i <= 20000; i++) { const v = R(i / 20000 * rDom) ** 2; if (v > R2max) R2max = v; }
+  const dens2max = R2max * Y2max;
+
+  /* estrazione di un punto dalla distribuzione esatta; restituisce il segno di ψ */
+  const sample = out => {
+    const u = Math.random();
+    let lo = 0, hi = NT;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cdf[mid] <= u) lo = mid; else hi = mid; }
+    const r = (lo + (cdf[hi] > cdf[lo] ? (u - cdf[lo]) / (cdf[hi] - cdf[lo]) : Math.random())) * t.h;
+    let x, y, z, yv;
+    do {
+      const ct = 2 * Math.random() - 1, ph = 2 * Math.PI * Math.random(), st = Math.sqrt(1 - ct * ct);
+      x = st * Math.cos(ph); y = st * Math.sin(ph); z = ct;
+      yv = Y(x, y, z, 1);
+    } while (Math.random() * Y2max > yv * yv);
+    out[0] = r * x; out[1] = r * z; out[2] = -r * y;
+    const s = R(r) * yv;
+    return s > 0 ? 1 : s < 0 ? -1 : 0;
+  };
+  /* Regioni (domini nodali): le superfici dove ψ = 0 dividono lo spazio in regioni, ognuna con un solo segno
+     (i lobi, gli anelli, i gusci). Per un orbitale dell'idrogeno sono il prodotto di:
+     · gusci tra due sfere di zero consecutive (zeri della parte radiale),
+     · fasce tra due coni di zero consecutivi (zeri di P_l^|m| in cos θ),
+     · spicchi tra due semipiani di zero consecutivi (zeri di cos(mφ) o sin(mφ)). */
+  const roots = (f, a, b, n) => {
+    const out = []; let x0 = a, f0 = f(a);
+    for (let i = 1; i <= n; i++) {
+      const x1 = a + (b - a) * i / n, f1 = f(x1);
+      if (f0 === 0) out.push(x0);
+      else if (f0 * f1 < 0) { let lo = x0, hi = x1, flo = f0; for (let it = 0; it < 80; it++) { const mid = (lo + hi) / 2, fm = f(mid); if ((fm > 0) === (flo > 0)) { lo = mid; flo = fm; } else hi = mid; } out.push((lo + hi) / 2); }
+      x0 = x1; f0 = f1;
+    }
+    return out;
+  };
+  const Lpoly = rho => { let L = 0; for (let i = k; i >= 0; i--) L = L * rho + Lc[i]; return L; };
+  const radNodes = k > 0 ? roots(Lpoly, 1e-9, sc * rTail, 40000).map(rho => rho / sc) : [];            // pm, crescenti
+  const angRoots = !iso && l - am > 0 ? roots(x => legendreP(l, am, x), -1 + 1e-9, 1 - 1e-9, 40000).sort((p, q) => q - p) : []; // cos θ, decrescenti
+  const dAm = iso ? 0 : am, nb = iso ? 1 : l - am + 1, ns = dAm > 0 ? 2 * dAm : 1, nDomains = radNodes.length + 1 === 0 ? 0 : (radNodes.length + 1) * nb * ns;
+  const domainOf = (X, Yc, Zc) => {
+    const x = X, y = -Zc, z = Yc, r = Math.sqrt(x * x + y * y + z * z);
+    let kr = 0; while (kr < radNodes.length && radNodes[kr] < r) kr++;
+    const ct = r > 0 ? z / r : 1;
+    let bd = 0; while (bd < angRoots.length && angRoots[bd] > ct) bd++;
+    let sct = 0;
+    if (dAm > 0) {
+      const phi = Math.atan2(y, x), q = m > 0 ? (am * phi + Math.PI / 2) / Math.PI : am * phi / Math.PI;
+      sct = ((Math.floor(q) % ns) + ns) % ns;
+    }
+    return (kr * nb + bd) * ns + sct;
+  };
+  /* distanze dal protone: la più frequente (massimo di r²R²), quella entro cui cade metà delle misure, e il 90% */
+  let rPeak = 0, best = -1;
+  for (let i = 1; i <= 40000; i++) { const r = rTail * i / 40000, v = r * r * R(r) ** 2; if (v > best) { best = v; rPeak = r; } }
+  { let lo = Math.max(0, rPeak - rTail / 40000), hi = rPeak + rTail / 40000;                 // raffinamento del massimo
+    for (let it = 0; it < 60; it++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (m1 * m1 * R(m1) ** 2 < m2 * m2 * R(m2) ** 2) lo = m1; else hi = m2; } rPeak = (lo + hi) / 2; }
+  const rMedian = quant(0.5), r90 = quant(0.9);
+  return { n, l, m, psi, R, Y, parity, r99, rDom, rTail, dens2max, Y2maxPlain, sample, norm: tot, domainOf, nDomains, rPeak, rMedian, r90,
+           iso, coef: { Lc, sc, NR, NY, k, l, am, m, iso, radNodes, angRoots, nb, ns, dAm } };   // coefficienti della formula, per calcolarla anche sulla scheda grafica
+}
+
+/* ----- Cubetti: probabilità di ogni cubo (parte positiva e negativa), integrata con Gauss–Legendre ----- */
+const GL = {
+  2: { x: [-0.5773502691896257, 0.5773502691896257], w: [1, 1] },
+  3: { x: [-0.7745966692414834, 0, 0.7745966692414834], w: [0.5555555555555556, 0.8888888888888888, 0.5555555555555556] },
+  5: { x: [-0.9061798459386640, -0.5384693101056831, 0, 0.5384693101056831, 0.9061798459386640],
+       w: [0.2369268850561891, 0.4786286704993665, 0.5688888888888889, 0.4786286704993665, 0.2369268850561891] },
+};
+/* densità media nel cubo [cx±h]×[cy±h]×[cz±h], separata per segno: [media+, media−] */
+function cubeAvg(orb, cx, cy, cz, h, q) {
+  const g = GL[q];
+  let p = 0, nn = 0;
+  for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) for (let c = 0; c < q; c++) {
+    const v = orb.psi(cx + g.x[a] * h, cy + g.x[b] * h, cz + g.x[c] * h);
+    const w = g.w[a] * g.w[b] * g.w[c] * v * v;
+    if (v >= 0) p += w; else nn += w;
+  }
+  return [p / 8, nn / 8];                            // Σw = 8 per ogni asse al cubo
+}
+function cubeAvgAdaptive(orb, cx, cy, cz, h, tol, depth) {
+  /* regola di Gauss con 2, poi 3, poi 5 punti per lato: si accetta quando due ordini successivi coincidono entro tol;
+     se nemmeno 3 e 5 coincidono (per esempio vicino al nucleo), il cubo si divide in 8 e si ripete */
+  const A = cubeAvg(orb, cx, cy, cz, h, 2), B = cubeAvg(orb, cx, cy, cz, h, 3);
+  if (Math.abs((A[0] + A[1]) - (B[0] + B[1])) <= tol) return B;
+  const C = cubeAvg(orb, cx, cy, cz, h, 5);
+  if (Math.abs((B[0] + B[1]) - (C[0] + C[1])) <= tol || depth >= 3) return C;
+  const s = h / 2;
+  let p = 0, nn = 0;
+  for (const dx of [-s, s]) for (const dy of [-s, s]) for (const dz of [-s, s]) {
+    const v = cubeAvgAdaptive(orb, cx + dx, cy + dy, cz + dz, s, tol, depth + 1);
+    p += v[0]; nn += v[1];
+  }
+  return [p / 8, nn / 8];
+}
+const MAX_CELLS_PER_SIDE = 255;   // limite delle schede grafiche dei telefoni per le texture 3D (256)
+function cellsPerSide(orb, L) { return 2 * Math.ceil(orb.rDom / L - 0.5) + 1; }
+/* Una fetta dell'ottante positivo (indici i, j ≥ c e k in [k0, k1)): la griglia intera si ottiene per specchiamento.
+   Serve a dividere il calcolo tra più Worker. Restituisce [media+, media−] per ogni cubo, in ordine i, j, k. */
+function octantSlab(orb, L, k0, k1) {
+  const N = cellsPerSide(orb, L), c = (N - 1) / 2, h = L / 2, M = N - c;
+  const out = new Float32Array(2 * M * M * (k1 - k0));
+  const tol = 1e-6 * orb.dens2max;
+  let o = 0;
+  for (let k = k0; k < k1; k++) for (let j = c; j < N; j++) for (let i = c; i < N; i++) {
+    const v = cubeAvgAdaptive(orb, (i - c) * L, (j - c) * L, (k - c) * L, h, tol, 0);
+    out[o++] = v[0]; out[o++] = v[1];
+  }
+  return out;
+}
+
+/* ----- Superficie: il confine della regione più piccola che contiene la frazione X della probabilità -----
+   È la superficie dove ψ² vale una soglia t: dentro ψ² > t. La soglia si trova così: si estraggono moltissimi punti
+   dalla distribuzione esatta e t è il valore di ψ² sotto cui cade la frazione (1 − X) di essi.
+   La superficie si costruisce con i tetraedri di una griglia fine; ogni vertice è messo esattamente sulla superficie
+   (bisezione sulla formula), la normale viene dalla pendenza esatta di ψ². */
+function surfaceThreshold(orb, X, M) {
+  const v = new Float64Array(M), t = [0, 0, 0];
+  for (let i = 0; i < M; i++) { orb.sample(t); const p = orb.psi(t[0], t[1], t[2]); v[i] = p * p; }
+  v.sort();
+  return v[Math.floor((1 - X) * M)];
+}
+function surfaceBounds(orb, t) {
+  let rS = orb.rTail;
+  for (let i = 4000; i >= 0; i--) { const r = orb.rTail * i / 4000, R = orb.R(r); if (R * R * orb.Y2maxPlain >= t) { rS = Math.min(orb.rTail, r * 1.03 + orb.rTail / 4000); break; } }
+  return rS;
+}
+function surfaceMesh(orb, X, G, tGiven, kFrom, kTo) {
+  const t = tGiven !== undefined ? tGiven : surfaceThreshold(orb, X, 600000);
+  const rS = surfaceBounds(orb, t);
+  const k0 = kFrom === undefined ? 0 : kFrom, k1 = kTo === undefined ? G : kTo;
+  const s = Math.sqrt(t), n1 = G + 1;
+  /* Griglia più fitta vicino al nucleo, dove i lobi interni sono piccoli: x = rS·sinh(B·u)/sinh(B), u ∈ [−1, 1]
+     (al centro i passi sono 2,4 volte più fini di una griglia uniforme, ai bordi più larghi dove le superfici sono ampie e lisce) */
+  const B = 2.5, SB = Math.sinh(B);
+  const P = i => rS * Math.sinh(B * (2 * i / G - 1)) / SB;
+  /* valori di ψ (con il segno) ai vertici della griglia; ψ è pari o dispari rispetto a ogni asse: si calcola un valore
+     e si ricopia negli specchiamenti con il segno giusto */
+  const [pX, pY, pZ] = orb.parity, H0 = G / 2;
+  const psiG = new Float32Array(n1 * n1 * n1), done = new Uint8Array(n1 * n1 * n1);
+  for (let k = k0; k <= k1; k++) for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
+    const o = i + n1 * (j + n1 * k);
+    if (done[o]) continue;
+    const ii = i < H0 ? G - i : i, jj = j < H0 ? G - j : j, kk = k < H0 ? G - k : k;
+    const v = orb.psi(P(ii), P(jj), P(kk));
+    for (const [a, fa] of [[ii, 1], [G - ii, pX]]) for (const [b, fb] of [[jj, 1], [G - jj, pY]]) for (const [c, fc] of [[kk, 1], [G - kk, pZ]]) {
+      if (c < k0 || c > k1) continue;
+      const q = a + n1 * (b + n1 * c); psiG[q] = v * fa * fb * fc; done[q] = 1;
+    }
+  }
+  /* Due superfici separate: ψ = +√t (regione azzurra) e ψ = −√t (regione arancione). Estrarle separatamente
+     dal valore con il segno garantisce che non si compenetrino anche dove sono vicinissime (vicino ai nodi). */
+  const pos = [], nor = [], sgn = [], idx = [];
+  const corner = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]];
+  const TT = [0, 5, 1, 6, 0, 1, 2, 6, 0, 2, 3, 6, 0, 3, 7, 6, 0, 7, 4, 6, 0, 4, 5, 6];
+  const coord = a => [P(a % n1), P(Math.floor(a / n1) % n1), P(Math.floor(a / (n1 * n1)))];
+  for (const sg of [1, -1]) {
+    const F = q => sg * psiG[q] - s;                  // > 0 dentro la regione
+    const g = (x, y, z) => sg * orb.psi(x, y, z) - s;
+    const map = new Map();
+    const vertex = (a, b) => {
+      const key = a < b ? a * 1e7 + b : b * 1e7 + a;
+      let vi = map.get(key);
+      if (vi !== undefined) return vi;
+      const [xa, ya, za] = coord(a), [xb, yb, zb] = coord(b);
+      /* punto del lato dove la funzione vale esattamente zero: regula falsi (Illinois) */
+      let s0 = 0, s1 = 1, f0 = F(a), f1 = F(b), side = 0, sm = 0.5;
+      for (let it = 0; it < 40; it++) {
+        sm = (s0 * f1 - s1 * f0) / (f1 - f0);
+        const fm = g(xa + (xb - xa) * sm, ya + (yb - ya) * sm, za + (zb - za) * sm);
+        if (Math.abs(fm) <= 1e-9 * s || s1 - s0 < 1e-12) break;
+        if ((fm > 0) === (f0 > 0)) { s0 = sm; f0 = fm; if (side === -1) f1 /= 2; side = -1; }
+        else { s1 = sm; f1 = fm; if (side === 1) f0 /= 2; side = 1; }
+      }
+      const x = xa + (xb - xa) * sm, y = ya + (yb - ya) * sm, z = za + (zb - za) * sm;
+      const eps = 1e-4 * Math.max(Math.hypot(xb - xa, yb - ya, zb - za), 1e-6);
+      const nx = g(x - eps, y, z) - g(x + eps, y, z), ny = g(x, y - eps, z) - g(x, y + eps, z), nz = g(x, y, z - eps) - g(x, y, z + eps);
+      const nl = Math.hypot(nx, ny, nz) || 1;        // normale verso l'esterno della regione
+      vi = pos.length / 3;
+      pos.push(x, y, z); nor.push(nx / nl, ny / nl, nz / nl); sgn.push(sg);
+      map.set(key, vi);
+      return vi;
+    };
+    const id = new Int32Array(8), vv = new Int32Array(4), ins = new Uint8Array(4);
+    for (let k = k0; k < k1; k++) for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+      let np = 0;
+      for (let q = 0; q < 8; q++) { const c = corner[q]; id[q] = (i + c[0]) + n1 * ((j + c[1]) + n1 * (k + c[2])); if (F(id[q]) > 0) np++; }
+      if (np === 0 || np === 8) continue;
+      for (let tt = 0; tt < 6; tt++) {
+        let ni = 0;
+        for (let q = 0; q < 4; q++) { vv[q] = id[TT[4 * tt + q]]; ins[q] = F(vv[q]) > 0 ? 1 : 0; ni += ins[q]; }
+        if (ni === 0 || ni === 4) continue;
+        if (ni === 1 || ni === 3) {
+          const want = ni === 1 ? 1 : 0;
+          let lone = 0;
+          for (let q = 0; q < 4; q++) if (ins[q] === want) { lone = q; break; }
+          for (let q = 0; q < 4; q++) if (q !== lone) idx.push(vertex(vv[lone], vv[q]));
+        } else {
+          let a0 = -1, a1 = -1, b0 = -1, b1 = -1;
+          for (let q = 0; q < 4; q++) { if (ins[q]) { if (a0 < 0) a0 = q; else a1 = q; } else { if (b0 < 0) b0 = q; else b1 = q; } }
+          const p0 = vertex(vv[a0], vv[b0]), p1 = vertex(vv[a0], vv[b1]), p2 = vertex(vv[a1], vv[b1]), p3 = vertex(vv[a1], vv[b0]);
+          idx.push(p0, p1, p2, p0, p2, p3);
+        }
+      }
+    }
+  }
+  return { pos: new Float32Array(pos), nor: new Float32Array(nor), sgn: new Float32Array(sgn), idx: new Uint32Array(idx), t, rS };
+}
+
+/* griglia di N×N×N cubi di lato L, centrata sul nucleo (N dispari: il cubo centrale contiene il nucleo) */
+function voxelGrid(orb, L, onProgress) {
+  const N = cellsPerSide(orb, L), c = (N - 1) / 2, h = L / 2;
+  const data = new Float32Array(2 * N * N * N);
+  const tol = 1e-6 * orb.dens2max;                   // errore sulla densità media < 10⁻⁶ del massimo
+  const [pX, pY, pZ] = orb.parity;
+  const idx = (i, j, k) => 2 * (i + N * (j + N * k));
+  for (let k = c; k < N; k++) {
+    for (let j = c; j < N; j++) for (let i = c; i < N; i++) {
+      const v = cubeAvgAdaptive(orb, (i - c) * L, (j - c) * L, (k - c) * L, h, tol, 0);
+      for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+        const ii = c + sx * (i - c), jj = c + sy * (j - c), kk = c + sz * (k - c);
+        if ((sx < 0 && i === c) || (sy < 0 && j === c) || (sz < 0 && k === c)) continue;
+        const f = (sx < 0 ? pX : 1) * (sy < 0 ? pY : 1) * (sz < 0 ? pZ : 1);
+        const o = idx(ii, jj, kk);
+        data[o] = f > 0 ? v[0] : v[1];
+        data[o + 1] = f > 0 ? v[1] : v[0];
+      }
+    }
+    if (onProgress) onProgress((k - c + 1) / (N - c));
+  }
+  /* controlli: probabilità totale e colonna più densa lungo gli assi (per la scala di luminosità) */
+  let total = 0, maxCol = 0;
+  const colX = new Float64Array(N * N), colY = new Float64Array(N * N), colZ = new Float64Array(N * N);
+  for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const o = idx(i, j, k), d = data[o] + data[o + 1];
+    total += d; colX[j + N * k] += d; colY[i + N * k] += d; colZ[i + N * j] += d;
+  }
+  for (let q = 0; q < N * N; q++) maxCol = Math.max(maxCol, colX[q], colY[q], colZ[q]);
+  return { data, N, L, total: total * L * L * L, maxCol: maxCol * L };
+}
+</script>
+<script type="text/plain" id="worker">
+/* ===== Lavoro in background (ogni Worker esegue un compito alla volta) ===== */
+self.onmessage = e => {
+  const q = e.data, orb = makeOrbital(q.sys, q.n, q.l, q.m, q.free);
+  if (q.type === 'points') {
+    const pos = new Float64Array(3 * q.N), sgn = new Int8Array(q.N), tmp = [0, 0, 0];
+    for (let i = 0; i < q.N; i++) { sgn[i] = orb.sample(tmp); pos[3 * i] = tmp[0]; pos[3 * i + 1] = tmp[1]; pos[3 * i + 2] = tmp[2]; }
+    self.postMessage({ type: 'points', ver: q.ver, pos, sgn, N: q.N }, [pos.buffer, sgn.buffer]);
+  } else if (q.type === 'slab') {
+    const data = octantSlab(orb, q.L, q.k0, q.k1);
+    self.postMessage({ type: 'slab', ver: q.ver, k0: q.k0, k1: q.k1, data }, [data.buffer]);
+  } else if (q.type === 'threshold') {
+    const t = surfaceThreshold(orb, q.X, 600000);
+    self.postMessage({ type: 'threshold', ver: q.ver, t, rS: surfaceBounds(orb, t) });
+  } else if (q.type === 'mesh') {
+    const m = surfaceMesh(orb, q.X, q.G, q.t, q.k0, q.k1);
+    self.postMessage({ type: 'mesh', ver: q.ver, pos: m.pos, nor: m.nor, sgn: m.sgn, idx: m.idx }, [m.pos.buffer, m.nor.buffer, m.sgn.buffer, m.idx.buffer]);
+  }
+};
+</script>
+<script>
+'use strict';
+/* =====================================================================================
+   ATOMO DI IDROGENO — pagina principale
+   1. Sistema fisico            5. Pallini (processore)                 9. Gesti
+   2. Stato e impostazioni      6–7. Cubetti e superficie (scheda grafica) 10. Pannelli e avvio
+   3. Vista e zoom              8. Elementi sovrapposti (protone, assi, mappa, righello)
+   4. Calcolo in parallelo
+   Le tre viste si possono accendere insieme: cubetti e superficie sulla scheda grafica, i pallini su una tela sopra
+   che aggiunge la propria luce.
+   Per un altro sistema con un solo elettrone basta cambiare SYSTEM: tutto il resto non cambia.
+   ===================================================================================== */
+
+/* ---------- 1. Sistema fisico: costanti CODATA 2022 ---------- */
+const A0_PM = 52.9177210544, MP_ME = 1836.152673426;
+const SYSTEM = { Z: 1, a: A0_PM * (1 + 1 / MP_ME), nucleus: { name: 'protone', rms: 0.84075e-3 } };  // distanze in pm
+const SYS_MSG = { Z: SYSTEM.Z, a: SYSTEM.a };
+const PHYS = new Function(document.getElementById('physics').textContent +
+  '\nreturn { makeOrbital, voxelGrid, octantSlab, cellsPerSide, MAX_CELLS_PER_SIDE, surfaceThreshold, surfaceBounds, surfaceMesh };')();
+
+/* ---------- 2. Stato e impostazioni ---------- */
+const $ = id => document.getElementById(id);
+const N_STEPS = [1000, 3000, 10000, 30000, 100000, 300000, 1000000];
+const L_STEPS = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50, 70, 100, 150, 200, 300, 500];
+const X_STEPS = [10, 25, 50, 75, 90, 95, 99];
+const A_STEPS = [10, 20, 35, 50, 70, 85, 100];
+const SURF_GRID = 128;
+const COL_PLUS = [80, 205, 225], COL_MINUS = [245, 150, 70], COL_NEUTRAL = [205, 208, 222];
+/* colori del segno; per l'atomo libero in uno stato eccitato la nube non ha un segno unico: un solo colore neutro */
+const colPlus = () => (orb && orb.iso ? COL_NEUTRAL : COL_PLUS), colMinus = () => (orb && orb.iso ? COL_NEUTRAL : COL_MINUS);
+const settings = { proton: true, labels: true, axes: true, map: true, ruler: true, counter: true, name: true, legend: true, slab: true, gloss: true };
+let st = { modes: { points: true, cubes: false, surface: false }, n: 1, l: 0, m: 0, N: 100000, L: 50, X: 90, A: 100, cut: false, lock: true, free: true };
+try {
+  const s = JSON.parse(localStorage.getItem('atomo-idrogeno-v5') || '{}');
+  if (s.settings) for (const k in settings) if (typeof s.settings[k] === 'boolean') settings[k] = s.settings[k];
+  if (s.st) { const md = Object.assign({}, st.modes, s.st.modes || {}); Object.assign(st, s.st); st.modes = md; }
+  st.n = 1; st.l = 0; st.m = 0; st.free = true;       // all'apertura: atomo isolato, libero, nello stato fondamentale 1s
+} catch (e) {}
+const save = () => { try { localStorage.setItem('atomo-idrogeno-v5', JSON.stringify({ settings, st })); } catch (e) {} };
+let orb = null;
+
+/* ---------- 3. Vista, orientamento e zoom ----------
+   Orientamento: una rotazione (quaternione) dalla scena alla vista. Righe della matrice = direzioni della scena che
+   vanno a destra (u), in alto (v), verso chi guarda (w). Proiezione ortogonale: stessa scala a ogni profondità.
+   Punto di mira F (pm): il punto della scena che sta al centro dello schermo e attorno a cui si ruota.
+   Con il fissaggio al centro attivo, F è il nucleo. */
+const MARGIN = 6, EDGE = 14, MS_PER_DECADE = 2000;
+const DEG = Math.PI / 180, YAW0 = -35 * DEG, PITCH0 = 20 * DEG;
+let W = 0, H = 0, DPR = 1, Wd = 0, Hd = 0;
+let logS = 0, zoomMax = 5, panX = 0, panY = 0, F = [0, 0, 0];
+let zoomAnim = null, panAnim = null, rotAnim = null, focusAnim = null, raf = 0;
+const baseRadius = () => Math.min(W, H) / 2 - MARGIN;
+const pxPerPmAt = ls => baseRadius() * Math.pow(10, ls) / orb.r99;       // a ×1 la sfera del 99% riempie lo schermo
+const pxPerPm = () => pxPerPmAt(logS);
+const qmul = (a, b) => [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3], a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+                        a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1], a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]];
+const qaxis = (x, y, z, ang) => { const s = Math.sin(ang / 2); return [Math.cos(ang / 2), x * s, y * s, z * s]; };
+const qnorm = q => { const l = Math.hypot(...q); return q.map(v => v / l); };
+function qslerp(a, b, t) {
+  let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+  if (d < 0) { b = b.map(v => -v); d = -d; }
+  if (d > 0.9995) return qnorm(a.map((v, i) => v + (b[i] - v) * t));
+  const th = Math.acos(d), s = Math.sin(th);
+  return a.map((v, i) => (Math.sin((1 - t) * th) * v + Math.sin(t * th) * b[i]) / s);
+}
+function basisOfQ(q) {
+  const [w, x, y, z] = q;
+  return { u: [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
+           v: [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
+           w: [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)] };
+}
+const Q0 = qmul(qaxis(1, 0, 0, PITCH0), qaxis(0, 1, 0, YAW0));             // vista iniziale: 35° di lato, 20° dall'alto
+let Q = Q0.slice();
+const basis = () => basisOfQ(Q);
+const CUT_N = basisOfQ(Q0).w;       // taglio: si toglie la metà rivolta verso la vista iniziale (piano per il nucleo, fisso nell'atomo)
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+/* Profondità visibile. In proiezione ortogonale ogni pixel vede tutto ciò che sta lungo la sua linea di vista, da un capo
+   all'altro dell'atomo. Ingrandendo, questo diventa ingestibile: ruotando di poco, il contenuto lontano davanti e dietro
+   attraversa lo schermo, e ciò che sta davanti copre la zona che si vuole guardare. Per questo si mostra solo lo spazio
+   entro una distanza dal punto di mira pari a metà del lato più lungo dello schermo: la regione visibile è grande quanto
+   lo schermo in tutte e tre le direzioni. A ×1 contiene tutto l'atomo; ingrandendo si restringe con la vista. */
+function slabHalf(ppm) {
+  if (!settings.slab) return Infinity;
+  const h = Math.max(W, H) / 2 / ppm;
+  return h >= 2 * orb.r99 ? Infinity : h;            // finché lo spessore supera il doppio della sfera del 99% (sempre a ×1), nessun limite
+}
+/* posizione sullo schermo del nucleo (tutti i disegni partono da qui) */
+function nucleusScreen(ppm) {
+  const b = basis();
+  return { cx: W / 2 + panX - dot3(F, b.u) * ppm, cy: H / 2 + panY + dot3(F, b.v) * ppm };
+}
+/* punto della scena sotto un punto dello schermo, sul piano per F perpendicolare alla vista */
+function worldAt(sx, sy, ppm, b) {
+  const a = (sx - W / 2 - panX) / ppm, c = (sy - H / 2 - panY) / ppm;
+  return [0, 1, 2].map(i => F[i] + a * b.u[i] - c * b.v[i]);
+}
+/* sposta F in modo che il punto P della scena finisca nel punto (sx, sy) dello schermo */
+function anchor(P, sx, sy, ppm, b) {
+  const a = (sx - W / 2 - panX) / ppm, c = (sy - H / 2 - panY) / ppm;
+  F = [0, 1, 2].map(i => P[i] - a * b.u[i] + c * b.v[i]);
+}
+
+/* ---------- 4. Calcolo in parallelo (più Worker) ---------- */
+const physicsSrc = $('physics').textContent, workerSrc = $('worker').textContent;
+const POOL = [];
+try {
+  const url = URL.createObjectURL(new Blob([physicsSrc + '\n' + workerSrc], { type: 'text/javascript' }));
+  const P = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 4) - 1));
+  for (let i = 0; i < P; i++) { const w = new Worker(url); w.busy = false; w.onmessage = e => { w.busy = false; onResult(e.data); pump(); }; POOL.push(w); }
+} catch (e) { POOL.length = 0; }
+let queue = [];
+function enqueue(tasks) { queue.push(...tasks); pump(); }
+function pump() {
+  if (!POOL.length) {                             // senza Worker: stesso calcolo nel thread principale
+    const q = queue.shift(); if (!q) return;
+    setTimeout(() => { onResult(runSync(q)); pump(); }, 0);
+    return;
+  }
+  for (const w of POOL) { if (w.busy) continue; const q = queue.shift(); if (!q) return; w.busy = true; w.postMessage(q); }
+}
+function runSync(q) {
+  const o = PHYS.makeOrbital(q.sys, q.n, q.l, q.m, q.free);
+  if (q.type === 'points') { const pos = new Float64Array(3 * q.N), sgn = new Int8Array(q.N), t = [0, 0, 0];
+    for (let i = 0; i < q.N; i++) { sgn[i] = o.sample(t); pos[3 * i] = t[0]; pos[3 * i + 1] = t[1]; pos[3 * i + 2] = t[2]; }
+    return { type: 'points', ver: q.ver, pos, sgn, N: q.N }; }
+  if (q.type === 'slab') return { type: 'slab', ver: q.ver, k0: q.k0, k1: q.k1, data: PHYS.octantSlab(o, q.L, q.k0, q.k1) };
+  if (q.type === 'threshold') { const t = PHYS.surfaceThreshold(o, q.X, 600000); return { type: 'threshold', ver: q.ver, t, rS: PHYS.surfaceBounds(o, t) }; }
+  const m = PHYS.surfaceMesh(o, q.X, q.G, q.t, q.k0, q.k1); return { type: 'mesh', ver: q.ver, ...m };
+}
+const ver = { points: 0, cubes: 0, surface: 0 };
+let pts = null, vox = null, surf = null, voxJob = null, surfJob = null;
+const base = () => ({ sys: SYS_MSG, n: st.n, l: st.l, m: st.m, free: st.free });
+function requestPoints() {
+  const v = ++ver.points; queue = queue.filter(q => q.type !== 'points'); pts = null;
+  enqueue([{ type: 'points', ver: v, ...base(), N: st.N }]);
+}
+function requestVoxels() {
+  const v = ++ver.cubes; queue = queue.filter(q => q.type !== 'slab'); vox = null;
+  const N = PHYS.cellsPerSide(orb, st.L), c = (N - 1) / 2, M = N - c;
+  const parts = Math.min(M, Math.max(1, POOL.length) * 4), tasks = [];
+  for (let p = 0; p < parts; p++) {
+    const k0 = c + Math.floor(M * p / parts), k1 = c + Math.floor(M * (p + 1) / parts);
+    if (k1 > k0) tasks.push({ type: 'slab', ver: v, ...base(), L: st.L, k0, k1 });
+  }
+  voxJob = { ver: v, N, L: st.L, c, M, half: new Uint16Array(2 * N * N * N), todo: tasks.length, total: tasks.length, scale: 1 / orb.dens2max };
+  enqueue(tasks);
+}
+function requestSurface() {
+  const v = ++ver.surface; queue = queue.filter(q => q.type !== 'threshold' && q.type !== 'mesh'); surf = null;
+  surfJob = { ver: v, stage: 'threshold', parts: [], todo: 0 };
+  enqueue([{ type: 'threshold', ver: v, ...base(), X: st.X / 100 }]);
+}
+function onResult(r) {
+  if (r.type === 'points') { if (r.ver !== ver.points) return; pts = { pos: r.pos, sgn: r.sgn, N: r.N, dom: domainsOf(r.pos, r.N) }; exposureDirty = true; }
+  else if (r.type === 'slab') {
+    if (!voxJob || r.ver !== voxJob.ver) return;
+    placeSlab(voxJob, r);
+    if (--voxJob.todo === 0) {
+      vox = { N: voxJob.N, L: voxJob.L, half: voxJob.half, scale: voxJob.scale, maxNorm: voxJob.maxNorm || 1 };
+      uploadVolume(vox);
+      vox.k = cubeExposure();
+      voxJob = null;
+    }
+  } else if (r.type === 'threshold') {
+    if (!surfJob || r.ver !== surfJob.ver) return;
+    surfJob.t = r.t; surfJob.rS = r.rS; surfJob.stage = 'mesh';
+    const G = SURF_GRID, parts = Math.max(1, POOL.length) * 2, tasks = [];
+    for (let p = 0; p < parts; p++) { const k0 = Math.floor(G * p / parts), k1 = Math.floor(G * (p + 1) / parts); if (k1 > k0) tasks.push({ type: 'mesh', ver: r.ver, ...base(), X: st.X / 100, G, t: r.t, k0, k1 }); }
+    surfJob.todo = tasks.length;
+    enqueue(tasks);
+  } else if (r.type === 'mesh') {
+    if (!surfJob || r.ver !== surfJob.ver) return;
+    surfJob.parts.push(r);
+    if (--surfJob.todo === 0) { surf = mergeMesh(surfJob.parts); surf.rS = surfJob.rS; surf.t = surfJob.t; uploadMesh(surf); surfJob = null; }
+  }
+  updateStatus(); requestFrame();
+}
+
+function domainsOf(pos, n) {
+  const d = new Uint8Array(n);
+  for (let i = 0; i < n; i++) d[i] = orb.domainOf(pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]);
+  return d;
+}
+/* conversione a mezza precisione (16 bit) per la texture dei cubetti: i valori sono divisi per il massimo */
+const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+function toHalf(v) {
+  f32[0] = v; const x = u32[0], sign = (x >>> 16) & 0x8000, e = ((x >>> 23) & 0xff) - 112, m = x & 0x7fffff;
+  if (e <= 0) { if (e < -10) return sign; const mm = (m | 0x800000) >> (1 - e); return sign | ((mm + 0x1000) >> 13); }
+  if (e >= 31) return sign | 0x7c00;
+  return sign | ((e << 10) + ((m + 0x1000) >> 13));
+}
+const HALF = new Float32Array(65536);
+for (let h = 0; h < 65536; h++) {
+  const s = h & 0x8000 ? -1 : 1, e = (h >> 10) & 31, m = h & 1023;
+  HALF[h] = e === 0 ? s * m * Math.pow(2, -24) : e === 31 ? s * Infinity : s * (1 + m / 1024) * Math.pow(2, e - 15);
+}
+/* una fetta dell'ottante calcolata da un Worker viene copiata negli 8 ottanti con il segno giusto */
+function placeSlab(J, r) {
+  const { N, c, M, half, scale } = J, [pX, pY, pZ] = orb.parity, d = r.data;
+  let o = 0;
+  for (let q = 0; q < d.length; q += 2) J.maxNorm = Math.max(J.maxNorm || 0, (d[q] + d[q + 1]) * scale);
+  for (let k = r.k0; k < r.k1; k++) for (let j = c; j < N; j++) for (let i = c; i < N; i++) {
+    const a = toHalf(d[o] * scale), b = toHalf(d[o + 1] * scale); o += 2;
+    for (let sz = 1; sz >= -1; sz -= 2) { if (sz < 0 && k === c) continue; const kk = c + sz * (k - c);
+      for (let sy = 1; sy >= -1; sy -= 2) { if (sy < 0 && j === c) continue; const jj = c + sy * (j - c);
+        for (let sx = 1; sx >= -1; sx -= 2) { if (sx < 0 && i === c) continue; const ii = c + sx * (i - c);
+          const f = (sx < 0 ? pX : 1) * (sy < 0 ? pY : 1) * (sz < 0 ? pZ : 1), q = 2 * (ii + N * (jj + N * kk));
+          half[q] = f > 0 ? a : b; half[q + 1] = f > 0 ? b : a; } } }
+  }
+}
+function mergeMesh(parts) {
+  let nv = 0, ni = 0;
+  for (const p of parts) { nv += p.pos.length / 3; ni += p.idx.length; }
+  const pos = new Float32Array(3 * nv), nor = new Float32Array(3 * nv), sgn = new Float32Array(nv), idx = new Uint32Array(ni);
+  let ov = 0, oi = 0;
+  for (const p of parts) {
+    pos.set(p.pos, 3 * ov); nor.set(p.nor, 3 * ov); sgn.set(p.sgn, ov);
+    for (let i = 0; i < p.idx.length; i++) idx[oi + i] = p.idx[i] + ov;
+    ov += p.pos.length / 3; oi += p.idx.length;
+  }
+  return { pos, nor, sgn, idx, count: ni };
+}
+
+/* ---------- 5. Pallini (sulla loro tela, che si somma come luce sopra le altre viste) ----------
+   Ogni pallino è una misura simulata: il centro è la posizione estratta, il disco serve solo a vederlo.
+   Ogni pallino porta la stessa quantità di luce (pesi del disco con somma 1): niente tremolii.
+   Luminosità = 1 − e^(−k·luce), colore = frazione di luce positiva. */
+const cnv = $('c'), ctx = cnv.getContext('2d');
+const pcv = $('pts'), pctx = pcv.getContext('2d');
+let accP = null, accN = null, img = null, img32 = null, kernel = null, kExp = 1, exposureDirty = true, onScreenCount = 0;
+const pointDiameterCss = N => Math.max(1.4, Math.min(3.2, 3.2 - 0.6 * Math.log10(N / 1000)));
+function buildKernel() {
+  const D = pointDiameterCss(st.N) * DPR, R = D / 2, SUB = 4, SS = 6, K = Math.ceil(D) + 2, half = Math.floor(K / 2), ker = [];
+  for (let oy = 0; oy < SUB; oy++) for (let ox = 0; ox < SUB; ox++) {
+    const cx = half + (ox + 0.5) / SUB, cy = half + (oy + 0.5) / SUB, w = new Float32Array(K * K);
+    let sum = 0, peak = 0;
+    for (let py = 0; py < K; py++) for (let px = 0; px < K; px++) {
+      let cov = 0;
+      for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) { const dx = px + (sx + 0.5) / SS - cx, dy = py + (sy + 0.5) / SS - cy; if (dx * dx + dy * dy <= R * R) cov++; }
+      w[py * K + px] = cov; sum += cov;
+    }
+    for (let i = 0; i < w.length; i++) { w[i] /= sum; if (w[i] > peak) peak = w[i]; }
+    ker.push({ w, peak });
+  }
+  kernel = { K, half, SUB, ker, peak: Math.max(...ker.map(k => k.peak)) };
+}
+const EXP_N = 4096, EXP_MAX = 12, expLUT = new Float32Array(EXP_N + 1);
+for (let i = 0; i <= EXP_N; i++) expLUT[i] = 1 - Math.exp(-i / EXP_N * EXP_MAX);
+const PREVIEW_MAX = 200000;
+const interacting = () => pointers.size > 0 || !!zoomAnim || !!panAnim || !!rotAnim || !!focusAnim;
+let fullPending = false;
+function drawPoints(cx, cy, ppm) {
+  accP.fill(0); accN.fill(0); onScreenCount = 0;
+  if (pts) {
+    /* con molti pallini, mentre la vista si muove se ne disegnano 200 000 (già in ordine casuale) con peso proporzionale */
+    const nDraw = interacting() && pts.N > PREVIEW_MAX ? PREVIEW_MAX : pts.N, wScale = pts.N / nDraw;
+    if (nDraw < pts.N) fullPending = true;
+    const b = basis(), [u0, u1, u2] = b.u, [v0, v1, v2] = b.v, [w0, w1, w2] = b.w, [c0, c1, c2] = CUT_N;
+    const sh = slabHalf(ppm), Fw = dot3(F, b.w), slab = isFinite(sh);
+    const k = ppm * DPR, ox = cx * DPR, oy = cy * DPR, { K, half, SUB, ker } = kernel, pos = pts.pos, sgn = pts.sgn, dom = pts.dom, hm = hideMask;
+    for (let i = 0, j = 0; i < nDraw; i++, j += 3) {
+      const X = pos[j], Y = pos[j + 1], Z = pos[j + 2];
+      if (st.cut && X * c0 + Y * c1 + Z * c2 > 0) continue;
+      if (slab && Math.abs(X * w0 + Y * w1 + Z * w2 - Fw) > sh) continue;
+      if (hm && (hm >>> dom[i]) & 1) continue;
+      const fx = ox + (X * u0 + Y * u1 + Z * u2) * k, fy = oy - (X * v0 + Y * v1 + Z * v2) * k;
+      if (fx < -K || fy < -K || fx > Wd + K || fy > Hd + K) continue;
+      if (fx >= 0 && fy >= 0 && fx < Wd && fy < Hd) onScreenCount += wScale;
+      const ix = Math.floor(fx), iy = Math.floor(fy);
+      const w = ker[Math.min(SUB - 1, Math.floor((fy - iy) * SUB)) * SUB + Math.min(SUB - 1, Math.floor((fx - ix) * SUB))].w;
+      const acc = sgn[i] >= 0 ? accP : accN, x0 = ix - half, y0 = iy - half;
+      for (let py = 0; py < K; py++) {
+        const yy = y0 + py; if (yy < 0 || yy >= Hd) continue;
+        const row = yy * Wd, wr = py * K;
+        for (let px = 0; px < K; px++) { const xx = x0 + px; if (xx < 0 || xx >= Wd) continue; acc[row + xx] += w[wr + px] * wScale; }
+      }
+    }
+    if (exposureDirty) {
+      const vals = [], step = Math.max(1, Math.floor(accP.length / 200000));
+      for (let p = 0; p < accP.length; p += step) { const s = accP[p] + accN[p]; if (s > 0) vals.push(s); }
+      vals.sort((a, c) => a - c);
+      const c99 = vals.length ? vals[Math.floor(0.99 * (vals.length - 1))] : kernel.peak;
+      const floor = Math.max(0.035, Math.min(0.30, 0.30 * Math.pow(1e4 / pts.N, 0.45)));
+      const kMax = -Math.log(1 - 0.75) / kernel.peak, kMin = -Math.log(1 - floor) / kernel.peak;
+      kExp = Math.max(kMin, Math.min(kMax, 2.2 / c99));
+      exposureDirty = false;
+    }
+  }
+  const sc = EXP_N / EXP_MAX, [pr, pg, pb] = colPlus(), [nr, ng, nb] = colMinus();
+  for (let p = 0; p < accP.length; p++) {
+    const a = accP[p], c = accN[p], s = a + c;
+    if (s === 0) { img32[p] = 0xFF000000; continue; }
+    const e = s * kExp * sc, bri = e >= EXP_N ? expLUT[EXP_N] : expLUT[e | 0], f = a / s;
+    img32[p] = 0xFF000000 | (((nb + (pb - nb) * f) * bri) << 16) | (((ng + (pg - ng) * f) * bri) << 8) | (((nr + (pr - nr) * f) * bri) | 0);
+  }
+  pctx.putImageData(img, 0, 0);
+}
+
+/* ---------- 6–7. Cubetti e superficie (scheda grafica, WebGL2) ----------
+   Cubetti: per ogni pixel si segue la linea di vista nella griglia e si somma, cubo per cubo, densità × lunghezza esatta
+   del tratto dentro quel cubo (separatamente per segno). Superficie: triangoli illuminati, con opacità scelta.
+   Se sono attive entrambe, la superficie si disegna sopra l'immagine dei cubetti. */
+const glc = $('gl');
+let gl = null, progV = null, progS = null, progC = null, progQ = null, tex = null, UV = {}, US = {}, UC = {}, UQ = {}, GL_SCALE = 1.5, meshBuf = null;
+let peel = null;                                    // risorse per la trasparenza a strati
+let caps = [];                                      // piani su cui le regioni tagliate si mostrano piene
+function compile(vs, fs, names, U) {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'aPos'); gl.bindAttribLocation(p, 1, 'aNor'); gl.bindAttribLocation(p, 2, 'aSgn');
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  for (const n of names) U[n] = gl.getUniformLocation(p, n);
+  return p;
+}
+function initGL() {
+  gl = glc.getContext('webgl2', { antialias: true, depth: true, premultipliedAlpha: false, preserveDrawingBuffer: true });
+  if (!gl) return false;
+  progV = compile(`#version 300 es
+  void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`,
+  `#version 300 es
+  precision highp float; precision highp int; precision highp sampler3D;
+  uniform sampler3D uVol; uniform int uN; uniform float uL, uScale, uK, uPxPerPm; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf, uGain;
+  uniform vec3 uU, uV, uW, uCut, uPlus, uMinus; uniform vec2 uCenter;
+  out vec4 outColor;
+  uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
+  bool hiddenAt(vec3 P) {                                   // la regione (dominio nodale) che contiene P è nascosta?
+    if (uHide == 0u) return false;
+    float x = P.x, y = -P.z, z = P.y, r = length(P);
+    int kr = 0; for (int i = 0; i < 6; i++) { if (i >= uNRad) break; if (uRadN[i] < r) kr++; }
+    float ct = r > 0.0 ? z / r : 1.0;
+    int bd = 0; for (int i = 0; i < 6; i++) { if (i >= uNAng) break; if (uAngR[i] > ct) bd++; }
+    int sct = 0;
+    if (uDAm > 0) {
+      float phi = atan(y, x);
+      float q = uDMs > 0 ? (float(uDAm) * phi + 1.5707963268) / 3.1415926536 : float(uDAm) * phi / 3.1415926536;
+      int f = int(floor(q));
+      sct = f - uNs * int(floor(float(f) / float(uNs)));
+    }
+    int d = (kr * uNb + bd) * uNs + sct;
+    return ((uHide >> uint(d)) & 1u) == 1u;
+  }
+  void main(){
+    float N = float(uN);
+    vec2 d = (gl_FragCoord.xy - uCenter) / (uPxPerPm * uL);
+    vec3 p0 = d.x * uU + d.y * uV + vec3(0.5 * N);
+    vec3 dir = -uW;
+    vec3 dd = vec3(abs(dir.x) < 1e-7 ? 1e-7 : dir.x, abs(dir.y) < 1e-7 ? 1e-7 : dir.y, abs(dir.z) < 1e-7 ? 1e-7 : dir.z);
+    vec3 inv = 1.0 / dd;
+    vec3 ta = -p0 * inv, tb = (vec3(N) - p0) * inv, tmn = min(ta, tb), tmx = max(ta, tb);
+    float t0 = max(max(tmn.x, tmn.y), tmn.z), t1 = min(min(tmx.x, tmx.y), tmx.z);
+    if (uCutOn == 1) {                                  // si tiene solo la parte con (p − centro)·taglio ≤ 0
+      float f0 = dot(p0 - vec3(0.5 * N), uCut), den = dot(dd, uCut);
+      if (abs(den) < 1e-9) { if (f0 > 0.0) t1 = t0; }
+      else { float tc = -f0 / den; if (den > 0.0) t1 = min(t1, tc); else t0 = max(t0, tc); }
+    }
+    if (uSlab == 1) {                                   // profondità (rispetto al nucleo) lungo la linea: z = −t·L
+      t0 = max(t0, (-uFw - uSlabHalf) / uL); t1 = min(t1, (-uFw + uSlabHalf) / uL);
+    }
+    vec2 acc = vec2(0.0);
+    if (t1 > t0) {
+      vec3 p = p0 + dd * (t0 + 1e-4);
+      ivec3 cell = clamp(ivec3(floor(p)), ivec3(0), ivec3(uN - 1)), stp = ivec3(sign(dd));
+      vec3 tNext = (vec3(cell) + max(vec3(stp), vec3(0.0)) - p0) * inv, tDel = abs(inv);
+      float t = t0;
+      for (int it = 0; it < 1024; it++) {
+        float tn = min(min(tNext.x, tNext.y), tNext.z), seg = min(tn, t1) - t;
+        if (seg > 0.0 && !hiddenAt((vec3(cell) + 0.5 - 0.5 * N) * uL)) acc += texelFetch(uVol, cell, 0).rg * seg;
+        t = tn;
+        if (t >= t1) break;
+        if (tNext.x <= tNext.y && tNext.x <= tNext.z) { cell.x += stp.x; tNext.x += tDel.x; }
+        else if (tNext.y <= tNext.z) { cell.y += stp.y; tNext.y += tDel.y; }
+        else { cell.z += stp.z; tNext.z += tDel.z; }
+        if (any(lessThan(cell, ivec3(0))) || any(greaterThanEqual(cell, ivec3(uN)))) break;
+      }
+      acc *= uL * uScale * uGain;
+    }
+    float s = acc.x + acc.y, bri = 1.0 - exp(-uK * s), f = s > 0.0 ? acc.x / s : 0.0;
+    outColor = vec4(mix(uMinus, uPlus, f) * bri, 1.0);
+  }`, ['uVol', 'uN', 'uL', 'uScale', 'uK', 'uPxPerPm', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uGain', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs', 'uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter'], UV);
+  /* ---------- 7. Superficie: triangoli illuminati, la parte davanti nasconde quella dietro ---------- */
+  progS = compile(`#version 300 es
+  in vec3 aPos; in vec3 aNor; in float aSgn;
+  uniform vec3 uU, uV, uW; uniform vec2 uCenter, uSize; uniform float uPxPerPm, uDepth;
+  out vec3 vN; out float vS; out vec3 vP;
+  void main(){
+    float sx = dot(aPos, uU) * uPxPerPm + uCenter.x, sy = dot(aPos, uV) * uPxPerPm + uCenter.y, z = dot(aPos, uW);
+    gl_Position = vec4(sx / uSize.x * 2.0 - 1.0, sy / uSize.y * 2.0 - 1.0, -z / uDepth, 1.0);
+    vN = vec3(dot(aNor, uU), dot(aNor, uV), dot(aNor, uW)); vS = aSgn; vP = aPos;
+  }`, `#version 300 es
+  precision highp float; precision highp sampler2D;
+  in vec3 vN; in float vS; in vec3 vP;
+  uniform vec3 uPlus, uMinus, uCut, uW; uniform int uCutOn, uPeel, uSlab; uniform float uAlpha, uFw, uSlabHalf, uSpec; uniform sampler2D uPrev;
+  out vec4 outColor;
+  uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
+  bool hiddenAt(vec3 P) {                                   // la regione (dominio nodale) che contiene P è nascosta?
+    if (uHide == 0u) return false;
+    float x = P.x, y = -P.z, z = P.y, r = length(P);
+    int kr = 0; for (int i = 0; i < 6; i++) { if (i >= uNRad) break; if (uRadN[i] < r) kr++; }
+    float ct = r > 0.0 ? z / r : 1.0;
+    int bd = 0; for (int i = 0; i < 6; i++) { if (i >= uNAng) break; if (uAngR[i] > ct) bd++; }
+    int sct = 0;
+    if (uDAm > 0) {
+      float phi = atan(y, x);
+      float q = uDMs > 0 ? (float(uDAm) * phi + 1.5707963268) / 3.1415926536 : float(uDAm) * phi / 3.1415926536;
+      int f = int(floor(q));
+      sct = f - uNs * int(floor(float(f) / float(uNs)));
+    }
+    int d = (kr * uNb + bd) * uNs + sct;
+    return ((uHide >> uint(d)) & 1u) == 1u;
+  }
+
+  void main(){
+    if (uCutOn == 1 && dot(vP, uCut) > 0.0) discard;
+    if (uSlab == 1 && abs(dot(vP, uW) - uFw) > uSlabHalf) discard;
+    if (hiddenAt(vP)) discard;
+    if (uPeel == 1 && gl_FragCoord.z <= texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).r + 1e-7) discard;   // strato già disegnato
+    vec3 n = normalize(vN); bool inner = n.z < 0.0; if (inner) n = -n;
+    vec3 L = normalize(vec3(-0.45, 0.55, 0.70)), Hh = normalize(L + vec3(0.0, 0.0, 1.0));
+    float diff = max(dot(n, L), 0.0), spec = pow(max(dot(n, Hh), 0.0), 40.0) * uSpec;
+    vec3 c = (vS > 0.0 ? uPlus : uMinus) * (0.28 + 0.72 * diff) + spec;
+    if (inner) c *= 0.45;
+    outColor = vec4(c * uAlpha, uAlpha);
+  }`, ['uU', 'uV', 'uW', 'uCenter', 'uSize', 'uPxPerPm', 'uDepth', 'uPlus', 'uMinus', 'uCut', 'uCutOn', 'uPeel', 'uAlpha', 'uPrev', 'uSlab', 'uFw', 'uSlabHalf', 'uSpec', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], US);
+  /* Sezione del taglio: dove il piano attraversa una regione (ψ² > t) la si riempie, come un solido tagliato.
+     ψ è calcolata qui dalla formula esatta, pixel per pixel; la luminosità cresce con la densità nel punto. */
+  progC = compile(`#version 300 es
+  void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`,
+  `#version 300 es
+  precision highp float; precision highp int; precision highp sampler2D;
+  uniform vec3 uU, uV, uW, uCut, uPlus, uMinus; uniform vec2 uCenter; uniform float uPxPerPm, uDepth, uRS, uT, uAlpha;
+  uniform int uPeel; uniform sampler2D uPrev;
+  uniform vec3 uPN; uniform float uPD; uniform int uCutOn, uSlab; uniform float uFw, uSlabHalf;
+  uniform uint uHide; uniform float uRadN[6], uAngR[6]; uniform int uNRad, uNAng, uDAm, uDMs, uNb, uNs;
+  bool hiddenAt(vec3 P) {                                   // la regione (dominio nodale) che contiene P è nascosta?
+    if (uHide == 0u) return false;
+    float x = P.x, y = -P.z, z = P.y, r = length(P);
+    int kr = 0; for (int i = 0; i < 6; i++) { if (i >= uNRad) break; if (uRadN[i] < r) kr++; }
+    float ct = r > 0.0 ? z / r : 1.0;
+    int bd = 0; for (int i = 0; i < 6; i++) { if (i >= uNAng) break; if (uAngR[i] > ct) bd++; }
+    int sct = 0;
+    if (uDAm > 0) {
+      float phi = atan(y, x);
+      float q = uDMs > 0 ? (float(uDAm) * phi + 1.5707963268) / 3.1415926536 : float(uDAm) * phi / 3.1415926536;
+      int f = int(floor(q));
+      sct = f - uNs * int(floor(float(f) / float(uNs)));
+    }
+    int d = (kr * uNb + bd) * uNs + sct;
+    return ((uHide >> uint(d)) & 1u) == 1u;
+  }
+
+  uniform float uLc[8]; uniform int uK, uL, uAm, uMs, uFree; uniform float uSc, uNR, uNY;
+  out vec4 outColor;
+  float legendre(float x) {
+    float pmm = 1.0;
+    if (uAm > 0) { float s = sqrt(max(0.0, (1.0 - x) * (1.0 + x))), f = 1.0; for (int i = 1; i <= 8; i++) { if (i > uAm) break; pmm *= f * s; f += 2.0; } }
+    if (uL == uAm) return pmm;
+    float pm1 = x * float(2 * uAm + 1) * pmm;
+    if (uL == uAm + 1) return pm1;
+    float pl = 0.0;
+    for (int L = 2; L <= 12; L++) { int ll = uAm + L; if (ll > uL) break; pl = (x * float(2 * ll - 1) * pm1 - float(ll + uAm - 1) * pmm) / float(ll - uAm); pmm = pm1; pm1 = pl; }
+    return pl;
+  }
+  float psi(vec3 P) {
+    float x = P.x, y = -P.z, z = P.y, r = length(P), rho = uSc * r, Lg = 0.0;
+    for (int i = 7; i >= 0; i--) { if (i > uK) continue; Lg = Lg * rho + uLc[i]; }
+    float R = uNR * exp(-0.5 * rho) * (uL == 0 ? 1.0 : pow(max(rho, 1e-30), float(uL))) * Lg;
+    if (uFree == 1) return R * uNY;                      // atomo libero: uguale in ogni direzione
+    if (r <= 0.0) return uL == 0 ? R * uNY : 0.0;
+    float a = uNY * legendre(z / r);
+    if (uMs != 0) {
+      float rxy = sqrt(x * x + y * y), c1 = 1.0, s1 = 0.0;
+      if (rxy > 0.0) { c1 = x / rxy; s1 = y / rxy; }
+      float c = c1, s = s1;
+      for (int i = 1; i < 8; i++) { if (i >= uAm) break; float c2 = c * c1 - s * s1; s = s * c1 + c * s1; c = c2; }
+      a *= uMs > 0 ? c : s;
+    }
+    return R * a;
+  }
+  void main(){
+    vec2 d = (gl_FragCoord.xy - uCenter) / uPxPerPm;
+    vec3 p0 = d.x * uU + d.y * uV, dir = -uW;
+    float den = dot(dir, uPN);
+    if (abs(den) < 1e-6) discard;
+    vec3 P = p0 + dir * ((uPD - dot(p0, uPN)) / den);     // punto della linea di vista che sta sul piano (P·n = d)
+    if (uCutOn == 1 && dot(P, uCut) > 1e-3) discard;       // rispetta il taglio a metà
+    if (uSlab == 1 && abs(dot(P, uW) - uFw) > uSlabHalf * 1.0001) discard;   // e lo spessore visibile
+    if (hiddenAt(P)) discard;
+    if (length(P) > uRS) discard;
+    float v = psi(P), d2 = v * v;
+    if (d2 <= uT) discard;
+    float b = 0.50 + 0.50 * clamp((d2 - uT) / (1.0 - uT), 0.0, 1.0);    // al bordo 50%, al massimo della densità 100%
+    float z = 0.5 - 0.5 * dot(P, uW) / uDepth;
+    if (uPeel == 1 && z <= texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).r + 1e-7) discard;
+    outColor = vec4((v > 0.0 ? uPlus : uMinus) * b * uAlpha, uAlpha);
+    gl_FragDepth = z;
+  }`, ['uU', 'uV', 'uW', 'uCut', 'uPlus', 'uMinus', 'uCenter', 'uPxPerPm', 'uDepth', 'uRS', 'uT', 'uLc', 'uK', 'uL', 'uAm', 'uMs', 'uFree', 'uSc', 'uNR', 'uNY', 'uAlpha', 'uPeel', 'uPrev', 'uPN', 'uPD', 'uCutOn', 'uSlab', 'uFw', 'uSlabHalf', 'uHide', 'uRadN', 'uAngR', 'uNRad', 'uNAng', 'uDAm', 'uDMs', 'uNb', 'uNs'], UC);
+  progQ = compile(`#version 300 es
+  void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`,
+  `#version 300 es
+  precision highp float; precision highp sampler2D;
+  uniform sampler2D uTex; out vec4 outColor;
+  void main(){ outColor = texelFetch(uTex, ivec2(gl_FragCoord.xy), 0); }`, ['uTex'], UQ);
+  return true;
+}
+function uploadVolume(v) {
+  if (!gl) return;
+  if (tex) gl.deleteTexture(tex);
+  tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_3D, tex);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_3D, p, gl.NEAREST);
+  for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, p, gl.CLAMP_TO_EDGE);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.RG16F, v.N, v.N, v.N, 0, gl.RG, gl.HALF_FLOAT, v.half);
+}
+function uploadMesh(m) {
+  if (!gl) return;
+  if (meshBuf) { gl.deleteVertexArray(meshBuf.vao); meshBuf.bufs.forEach(b => gl.deleteBuffer(b)); }
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const bufs = [];
+  [[m.pos, 3], [m.nor, 3], [m.sgn, 1]].forEach(([arr, n], i) => {
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, n, gl.FLOAT, false, 0, 0); bufs.push(b);
+  });
+  const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW); bufs.push(ib);
+  gl.bindVertexArray(null);
+  meshBuf = { vao, bufs, count: m.count };
+}
+/* luminosità dei cubetti: il 99° percentile delle colonne nella vista corrente arriva all'89% (stessa regola dei pallini) */
+function cubeExposure() {
+  const { N, L, half, scale } = vox, b = basis(), c = (N - 1) / 2, B = 2 * N + 3, hist = new Float64Array(B * B);
+  const step = N > 180 ? 2 : 1;
+  for (let k = 0; k < N; k += step) for (let j = 0; j < N; j += step) for (let i = 0; i < N; i += step) {
+    const X = i - c, Y = j - c, Z = k - c;
+    if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+    const q = 2 * (i + N * (j + N * k)), d = HALF[half[q]] + HALF[half[q + 1]];
+    if (d === 0) continue;
+    const s = X * b.u[0] + Y * b.u[1] + Z * b.u[2], t = X * b.v[0] + Y * b.v[1] + Z * b.v[2];
+    hist[Math.floor((t + B / 2) / step) * B + Math.floor((s + B / 2) / step)] += d * L * step / scale;
+  }
+  const vals = [];
+  for (let q = 0; q < hist.length; q++) if (hist[q] > 0) vals.push(hist[q]);
+  vals.sort((a, c2) => a - c2);
+  return vals.length ? 2.2 / vals[Math.floor(0.99 * (vals.length - 1))] : 1;
+}
+/* trasparenza esatta a strati ("depth peeling"): a ogni passata si disegna lo strato di superficie immediatamente
+   dietro quello precedente, poi gli strati si sovrappongono dal davanti al dietro. Nessun ordinamento sbagliato. */
+function peelResources() {
+  const w = glc.width, h = glc.height;
+  if (peel && peel.w === w && peel.h === h) return peel;
+  if (peel) { peel.tex.forEach(t => gl.deleteTexture(t)); peel.fbo.forEach(f => gl.deleteFramebuffer(f)); }
+  const mk = (internal, format, type) => {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, null);
+    for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+    for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE);
+    return t;
+  };
+  const depth = [mk(gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT), mk(gl.DEPTH_COMPONENT24, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT)];
+  const layer = mk(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE), accum = mk(gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+  const fb = (color, dep) => {
+    const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color, 0);
+    if (dep) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, dep, 0);
+    return f;
+  };
+  const fbo = [fb(layer, depth[0]), fb(layer, depth[1]), fb(accum, null)];
+  peel = { w, h, depth, layer, accum, fbo, tex: [depth[0], depth[1], layer, accum] };
+  peel.ok = fbo.every(f => { gl.bindFramebuffer(gl.FRAMEBUFFER, f); return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; });
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return peel;
+}
+let hideMask = 0;                                   // un bit per ogni regione nascosta
+function setHideUniforms(U) {
+  const c = orb.coef, rn = new Float32Array(6), ar = new Float32Array(6);
+  c.radNodes.forEach((v, i) => { rn[i] = v; }); c.angRoots.forEach((v, i) => { ar[i] = v; });
+  gl.uniform1ui(U.uHide, hideMask >>> 0);
+  gl.uniform1fv(U.uRadN, rn); gl.uniform1fv(U.uAngR, ar);
+  gl.uniform1i(U.uNRad, c.radNodes.length); gl.uniform1i(U.uNAng, c.angRoots.length);
+  gl.uniform1i(U.uDAm, c.dAm); gl.uniform1i(U.uDMs, c.m > 0 ? 1 : c.m < 0 ? -1 : 0); gl.uniform1i(U.uNb, c.nb); gl.uniform1i(U.uNs, c.ns);
+}
+function surfaceUniforms(b, cxg, cyg, ppm, alpha) {
+  const P = colPlus().map(v => v / 255), Mn = colMinus().map(v => v / 255);
+  gl.useProgram(progS);
+  gl.uniform3fv(US.uU, b.u); gl.uniform3fv(US.uV, b.v); gl.uniform3fv(US.uW, b.w);
+  gl.uniform2f(US.uCenter, cxg, cyg); gl.uniform2f(US.uSize, glc.width, glc.height);
+  gl.uniform1f(US.uPxPerPm, ppm * GL_SCALE); gl.uniform1f(US.uDepth, surf.rS * 1.8);
+  gl.uniform3fv(US.uPlus, P); gl.uniform3fv(US.uMinus, Mn); gl.uniform3fv(US.uCut, CUT_N); gl.uniform1i(US.uCutOn, st.cut ? 1 : 0);
+  gl.uniform1f(US.uAlpha, alpha); gl.uniform1i(US.uPrev, 1);
+  gl.uniform1f(US.uSpec, settings.gloss ? 0.22 : 0.0);   // riflessi: solo un aiuto per leggere la curvatura
+  gl.uniform1i(US.uSlab, 0); gl.uniform1f(US.uFw, 0); gl.uniform1f(US.uSlabHalf, 1e30);   // la superficie si vede sempre intera
+  setHideUniforms(US);
+  caps = st.cut ? [{ n: CUT_N, d: 0 }] : [];
+  if (!caps.length) return;
+  const cf = orb.coef, norm = 1 / Math.sqrt(orb.dens2max), Lc = new Float32Array(8);
+  cf.Lc.forEach((v, i) => { Lc[i] = v; });
+  gl.useProgram(progC);
+  gl.uniform3fv(UC.uU, b.u); gl.uniform3fv(UC.uV, b.v); gl.uniform3fv(UC.uW, b.w); gl.uniform3fv(UC.uCut, CUT_N);
+  gl.uniform3fv(UC.uPlus, P); gl.uniform3fv(UC.uMinus, Mn); gl.uniform2f(UC.uCenter, cxg, cyg);
+  gl.uniform1f(UC.uPxPerPm, ppm * GL_SCALE); gl.uniform1f(UC.uDepth, surf.rS * 1.8); gl.uniform1f(UC.uRS, surf.rS);
+  gl.uniform1f(UC.uT, surf.t / orb.dens2max);
+  gl.uniform1fv(UC.uLc, Lc); gl.uniform1i(UC.uK, cf.k); gl.uniform1i(UC.uL, cf.l); gl.uniform1i(UC.uAm, cf.am);
+  gl.uniform1i(UC.uMs, cf.m === 0 ? 0 : cf.m > 0 ? 1 : -1); gl.uniform1i(UC.uFree, cf.iso ? 1 : 0);
+  gl.uniform1f(UC.uSc, cf.sc); gl.uniform1f(UC.uNR, cf.NR * norm); gl.uniform1f(UC.uNY, cf.NY);
+  gl.uniform1f(UC.uAlpha, alpha); gl.uniform1i(UC.uPrev, 1);
+  gl.uniform1i(UC.uCutOn, st.cut ? 1 : 0); gl.uniform1i(UC.uSlab, 0);
+  gl.uniform1f(UC.uFw, 0); gl.uniform1f(UC.uSlabHalf, 1e30);
+  setHideUniforms(UC);
+}
+function drawSurfaceLayer(peelOn) {                  // superficie + sezione del taglio, con o senza il test dello strato precedente
+  gl.useProgram(progS); gl.uniform1i(US.uPeel, peelOn ? 1 : 0);
+  gl.bindVertexArray(meshBuf.vao); gl.drawElements(gl.TRIANGLES, meshBuf.count, gl.UNSIGNED_INT, 0); gl.bindVertexArray(null);
+  if (caps.length) {
+    gl.useProgram(progC); gl.uniform1i(UC.uPeel, peelOn ? 1 : 0);
+    for (const c of caps) { gl.uniform3fv(UC.uPN, c.n); gl.uniform1f(UC.uPD, c.d); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+  }
+}
+function drawGL(cx, cy, ppm) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, glc.width, glc.height);
+  gl.disable(gl.BLEND);
+  gl.clearColor(0, 0, 0, 1); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const b = basis(), cxg = cx * GL_SCALE, cyg = glc.height - cy * GL_SCALE;
+  if (st.modes.cubes && vox && tex) {
+    gl.disable(gl.DEPTH_TEST); gl.useProgram(progV); gl.bindVertexArray(null);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_3D, tex);
+    gl.uniform1i(UV.uVol, 0); gl.uniform1i(UV.uN, vox.N); gl.uniform1f(UV.uL, vox.L); gl.uniform1f(UV.uScale, 1 / vox.scale);
+    gl.uniform1f(UV.uK, vox.k); gl.uniform1f(UV.uPxPerPm, ppm * GL_SCALE); gl.uniform1i(UV.uCutOn, st.cut ? 1 : 0);
+    /* con lo spessore limitato la luminosità segue la densità media nello spessore visibile: finché lo spessore è più
+       grande del diametro della nuvola è la stessa di ×1, poi non si scurisce solo perché lo spessore si assottiglia */
+    const sh = slabHalf(ppm);
+    gl.uniform1i(UV.uSlab, isFinite(sh) ? 1 : 0); gl.uniform1f(UV.uFw, dot3(F, b.w)); gl.uniform1f(UV.uSlabHalf, isFinite(sh) ? sh : 1e30);
+    gl.uniform1f(UV.uGain, isFinite(sh) ? Math.max(1, orb.r99 / sh) : 1);
+    setHideUniforms(UV);
+    gl.uniform3fv(UV.uU, b.u); gl.uniform3fv(UV.uV, b.v); gl.uniform3fv(UV.uW, b.w); gl.uniform3fv(UV.uCut, CUT_N);
+    gl.uniform3fv(UV.uPlus, colPlus().map(v => v / 255)); gl.uniform3fv(UV.uMinus, colMinus().map(v => v / 255)); gl.uniform2f(UV.uCenter, cxg, cyg);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  if (!(st.modes.surface && surf && meshBuf)) return;
+  const alpha = st.A / 100;
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS);
+  if (alpha >= 1) {                                   // opaca: basta il test di profondità normale
+    surfaceUniforms(b, cxg, cyg, ppm, 1);
+    drawSurfaceLayer(false);
+    return;
+  }
+  const R = peelResources();
+  if (!R.ok) { surfaceUniforms(b, cxg, cyg, ppm, 1); drawSurfaceLayer(false); return; }
+  surfaceUniforms(b, cxg, cyg, ppm, alpha);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, R.fbo[2]); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  const layers = interacting() ? 6 : 12;
+  if (interacting()) fullPending = true;
+  for (let i = 0; i < layers; i++) {
+    const cur = i % 2, prev = 1 - cur;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, R.fbo[cur]);
+    gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, R.depth[prev]);
+    drawSurfaceLayer(i > 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);
+    /* lo strato appena trovato va sotto quelli già accumulati (composizione dal davanti al dietro) */
+    gl.bindFramebuffer(gl.FRAMEBUFFER, R.fbo[2]);
+    gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.ONE_MINUS_DST_ALPHA, gl.ONE, gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+    gl.useProgram(progQ); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, R.layer); gl.uniform1i(UQ.uTex, 2);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  /* risultato sopra lo sfondo (nero o cubetti) */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(progQ); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, R.accum); gl.uniform1i(UQ.uTex, 2);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.disable(gl.BLEND); gl.activeTexture(gl.TEXTURE0);
+}
+/* durante il movimento i cubetti si disegnano a risoluzione più bassa, poi a vista ferma di nuovo nitidi */
+function setGLScale(s) {
+  if (Math.abs(s - GL_SCALE) < 1e-6) return;
+  GL_SCALE = s; glc.width = Math.round(W * s); glc.height = Math.round(H * s);
+}
+
+/* ---------- 8. Elementi sovrapposti ---------- */
+const COL_PROTON = '#ff4d5e', COL_RULER = '#d0d0d0', COL_VIEW = '#6aa4ff';
+const LABEL_FONT = '12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const MAP_R = 36, MAP_PAD = 6, RULER_BLOCK = 44, TOOLBAR_H = 56;
+function formatNumber(v, dec) {
+  const s = dec === undefined ? String(+v.toPrecision(6)) : v.toFixed(dec);
+  let [i, d] = s.split('.'); i = i.replace(/\B(?=(\d{3})+(?!\d))/g, '\u202F');
+  return d ? i + ',' + d : i;
+}
+function clip(x0, y0, x1, y1, m) {
+  let t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0, p = [-dx, dx, -dy, dy], q = [x0 + m, W + m - x0, y0 + m, H + m - y0];
+  for (let i = 0; i < 4; i++) { if (p[i] === 0) { if (q[i] < 0) return null; continue; }
+    const t = q[i] / p[i]; if (p[i] < 0) { if (t > t1) return null; if (t > t0) t0 = t; } else { if (t < t0) return null; if (t < t1) t1 = t; } }
+  return [t0, t1];
+}
+function drawAxes(cx, cy, len, front) {
+  const b = basis();
+  for (let a = 0; a < 3; a++) for (const sg of [1, -1]) {
+    const x = b.u[a] * sg, y = b.v[a] * sg, z = b.w[a] * sg;
+    if ((z >= 0) !== front) continue;
+    const ex = cx + x * len, ey = cy - y * len, c = clip(cx, cy, ex, ey, 10), L = Math.hypot(ex - cx, ey - cy);
+    if (!c || L < 0.5) continue;
+    ctx.save(); ctx.strokeStyle = front ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.16)';
+    ctx.lineWidth = 1; ctx.setLineDash([6, 5]); ctx.lineDashOffset = c[0] * L;
+    ctx.beginPath(); ctx.moveTo(cx + (ex - cx) * c[0], cy + (ey - cy) * c[0]); ctx.lineTo(cx + (ex - cx) * c[1], cy + (ey - cy) * c[1]); ctx.stroke(); ctx.restore();
+  }
+}
+/* Protone. Il raggio quadratico medio della carica (0,84075 fm) è misurato. La forma della distribuzione all'interno è
+   l'approssimazione classica a esponenziale, ρ(r) ∝ e^(−r/b) con b = raggio medio/√12, che ha esattamente quel raggio medio:
+   un'immagine 3D univoca della carica del protone non esiste. Si disegna come le altre viste: ogni punto dello schermo
+   somma la carica che sta davanti e dietro, più luminoso dove ce n'è di più. */
+const PROTON_B = SYSTEM.nucleus.rms / Math.sqrt(12);                 // pm
+const PROTON_PROFILE = (() => {                                      // colonna di carica a distanza s dal centro (s in unità di b), 1 al centro
+  const out = [];
+  for (let i = 0; i <= 48; i++) {
+    const x = i / 4; let sum = 0; const du = 0.01;
+    for (let u = du / 2; u < 40; u += du) sum += Math.exp(-Math.sqrt(x * x + u * u)) * du;
+    out.push({ x, v: sum });                                           // al centro l'integrale vale 1
+  }
+  return out;
+})();
+function drawProton(cx, cy, ppm) {
+  const b = PROTON_B * ppm, rms = SYSTEM.nucleus.rms * ppm;
+  if (!(rms >= 1.4)) return;                                           // più piccolo di un pixel e mezzo: non si può disegnare
+  const R = 12 * b;
+  const dFar = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)), dNear = Math.hypot(Math.max(-cx, 0, cx - W), Math.max(-cy, 0, cy - H));
+  if (R < dNear) return;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  for (const p of PROTON_PROFILE) {
+    const a = 1 - Math.exp(-2.3 * p.v);                               // stessa resa delle altre viste: il centro arriva al 90%
+    g.addColorStop(p.x / 12, 'rgba(255,77,94,' + a.toFixed(4) + ')');
+  }
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, Math.min(R, dFar + 2), 0, 2 * Math.PI); ctx.fill();
+  if (!settings.labels) return;
+  const al = Math.max(0, Math.min(1, (rms - 36) / 16)), y = cy - rms * 2.2 - 6;
+  if (al <= 0 || y < 90 || y > H - 10) return;
+  ctx.save(); ctx.globalAlpha = al; ctx.font = LABEL_FONT; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = '#000';
+  const t = 'protone, raggio medio della carica: ' + formatNumber(SYSTEM.nucleus.rms * 1e3, 5) + ' femtometri';
+  ctx.strokeText(t, cx, y); ctx.fillStyle = COL_PROTON; ctx.fillText(t, cx, y); ctx.restore();
+}
+/* Mappa per orientarsi: l'atomo intero in piccolo (3000 misure simulate, stessi colori, stesso orientamento della vista)
+   con il rettangolo blu della zona inquadrata. A destra, la barra della profondità: in alto il lato verso chi guarda,
+   in basso quello opposto; la fascia blu è lo spessore visibile, la linea bianca la profondità del punto di mira. */
+let mini = null;
+function buildMini() {
+  const n = 3000, pos = new Float32Array(3 * n), sgn = new Int8Array(n), t = [0, 0, 0];
+  for (let i = 0; i < n; i++) { sgn[i] = orb.sample(t); pos[3 * i] = t[0]; pos[3 * i + 1] = t[1]; pos[3 * i + 2] = t[2]; }
+  mini = { n, pos, sgn, dom: domainsOf(pos, n) };
+}
+function drawMap(cx, cy, r99px) {
+  const size = 2 * (MAP_R + MAP_PAD), bx = EDGE, by = H - EDGE - TOOLBAR_H - RULER_BLOCK - 8 - size, mx = bx + size / 2, my = by + size / 2, k = MAP_R / r99px;
+  const x1 = mx - cx * k, y1 = my - cy * k, w = W * k, h = H * k, b = basis(), km = MAP_R / orb.r99;
+  ctx.save(); ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(bx + 0.5, by + 0.5, size - 1, size - 1, 10) : ctx.rect(bx + 0.5, by + 0.5, size - 1, size - 1);
+  ctx.fillStyle = '#0d0d0d'; ctx.fill(); ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1; ctx.stroke(); ctx.clip();
+  if (mini) {
+    const cP = 'rgba(' + colPlus().join(',') + ',0.55)', cN = 'rgba(' + colMinus().join(',') + ',0.55)';
+    for (let i = 0; i < mini.n; i++) {
+      const X = mini.pos[3 * i], Y = mini.pos[3 * i + 1], Z = mini.pos[3 * i + 2];
+      if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+      if (hideMask && (hideMask >>> mini.dom[i]) & 1) continue;
+      ctx.fillStyle = mini.sgn[i] >= 0 ? cP : cN;
+      ctx.fillRect(mx + (X * b.u[0] + Y * b.u[1] + Z * b.u[2]) * km - 0.5, my - (X * b.v[0] + Y * b.v[1] + Z * b.v[2]) * km - 0.5, 1, 1);
+    }
+  }
+  ctx.strokeStyle = COL_VIEW; ctx.fillStyle = COL_VIEW; ctx.lineWidth = 1.25;
+  if (Math.min(w, h) >= 2) ctx.strokeRect(x1, y1, w, h); else ctx.fillRect(x1 - 1, y1 - 1, Math.max(w, 2), Math.max(h, 2));
+  const a = Math.max(0, Math.min(1, (12 - Math.max(w, h)) / 6));
+  if (a > 0) {
+    const tx = x1 + w / 2, ty = y1 + h / 2, ux = Math.SQRT1_2, uy = -Math.SQRT1_2, L = 16, hd = 5;
+    ctx.globalAlpha = a;
+    ctx.beginPath(); ctx.moveTo(tx + ux * L, ty + uy * L); ctx.lineTo(tx + ux * hd, ty + uy * hd); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + ux * hd - uy * hd * 0.6, ty + uy * hd + ux * hd * 0.6); ctx.lineTo(tx + ux * hd + uy * hd * 0.6, ty + uy * hd - ux * hd * 0.6); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  /* barra della profondità */
+  const zx = bx + size + 5, zw = 7, zR = orb.r99 * 1.25, Fw = dot3(F, b.w), sh = (st.modes.points || st.modes.cubes) ? slabHalf(pxPerPm()) : Infinity;
+  const zy = z => by + size / 2 - (z / zR) * (size / 2);
+  ctx.save();
+  ctx.fillStyle = '#1b1b1b'; ctx.fillRect(zx, by, zw, size);
+  const top = Math.max(by, zy(Math.min(zR, Fw + sh))), bot = Math.min(by + size, zy(Math.max(-zR, Fw - sh)));
+  ctx.fillStyle = 'rgba(106,164,255,0.55)'; if (bot > top) ctx.fillRect(zx, top, zw, Math.max(1.5, bot - top));
+  const yf = Math.max(by, Math.min(by + size, zy(Fw)));
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(zx - 2, yf - 0.75, zw + 4, 1.5);
+  ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1; ctx.strokeRect(zx + 0.5, by + 0.5, zw - 1, size - 1);
+  ctx.restore();
+}
+function drawRuler(ppm) {
+  const maxPm = Math.min(0.75 * baseRadius(), 220) / ppm, k = Math.floor(Math.log10(maxPm)), p = Math.pow(10, k);
+  let m = 1; for (const c of [5, 2, 1]) if (c * p <= maxPm * (1 + 1e-9)) { m = c; break; }
+  const pm = m * p, len = pm * ppm;
+  const text = pm >= 1 - 1e-9 ? formatNumber(pm) + (Math.abs(pm - 1) < 1e-9 ? ' picometro' : ' picometri')
+                              : formatNumber(pm * 1e3) + (Math.abs(pm * 1e3 - 1) < 1e-9 ? ' femtometro' : ' femtometri');
+  const div = m === 1 ? 10 : m === 2 ? 4 : 5, half = div % 2 === 0 ? div / 2 : -1, x0 = EDGE + 2, y0 = H - EDGE - TOOLBAR_H - 4;
+  ctx.save(); ctx.font = LABEL_FONT;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x0 - 4, y0 - 28, Math.max(len, ctx.measureText(text).width) + 8, 34);
+  ctx.strokeStyle = COL_RULER; ctx.lineWidth = 1; ctx.lineCap = 'square';
+  ctx.beginPath(); ctx.moveTo(x0, y0 + 0.5); ctx.lineTo(x0 + len, y0 + 0.5);
+  for (let i = 0; i <= div; i++) { const x = Math.round(x0 + len * i / div) + 0.5, hh = (i === 0 || i === div) ? 9 : (i === half ? 6 : 4); ctx.moveTo(x, y0 + 0.5); ctx.lineTo(x, y0 + 0.5 - hh); }
+  ctx.stroke(); ctx.fillStyle = COL_RULER; ctx.fillText(text, x0, y0 - 14); ctx.restore();
+}
+
+/* Sfera della distanza scelta sul grafico: tutti i punti che stanno a quella distanza dal protone.
+   Contorno pieno e tre circonferenze massime (la metà dietro più chiara) per leggerla come sfera e non come anello. */
+function drawSelSphere(cx, cy, ppm, r) {
+  const Rp = r * ppm, b = basis();
+  if (!(Rp >= 1)) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(106,164,255,0.95)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, Rp, 0, 2 * Math.PI); ctx.stroke();
+  const circles = [[[1, 0, 0], [0, 0, 1]], [[1, 0, 0], [0, 1, 0]], [[0, 1, 0], [0, 0, 1]]];
+  ctx.lineWidth = 1;
+  for (const [A, Bv] of circles) {
+    let prev = null;
+    for (let i = 0; i <= 96; i++) {
+      const t = i / 96 * 2 * Math.PI, p = [0, 1, 2].map(k => r * (A[k] * Math.cos(t) + Bv[k] * Math.sin(t)));
+      const sx = cx + dot3(p, b.u) * ppm, sy = cy - dot3(p, b.v) * ppm, front = dot3(p, b.w) >= 0;
+      if (prev) { ctx.strokeStyle = front ? 'rgba(106,164,255,0.55)' : 'rgba(106,164,255,0.2)'; ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(sx, sy); ctx.stroke(); }
+      prev = [sx, sy];
+    }
+  }
+  const y = cy - Rp - 6;
+  if (y > 70) {
+    ctx.font = LABEL_FONT; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = '#000';
+    const t = 'sfera di raggio ' + (r >= 1 ? formatNumber(+r.toPrecision(4)) + ' pm' : formatNumber(+(r * 1e3).toPrecision(4)) + ' fm'); ctx.strokeText(t, cx, y); ctx.fillStyle = '#6aa4ff'; ctx.fillText(t, cx, y);
+  }
+  ctx.restore();
+}
+/* Dimostrazione: come dal grafico si ottiene la nuvola 3D, quando il valore dipende solo dalla distanza.
+   L'avanzamento p va da 0 a 3 e lo controlli tu (cursore, Avanti/Indietro, Avvia): la riproduzione si ferma alla fine
+   di ogni fase, così c'è il tempo di guardare.
+   Fase 1 (0→1): il grafico è disegnato in piedi sulla retta che parte dal protone; l'altezza si abbassa e diventa
+                 luminosità lungo la retta.
+   Fase 2 (1→2): la retta gira nel piano: ogni punto del piano prende il valore della sua distanza (un disco ad anelli).
+   Fase 3 (2→3): il disco gira attorno al suo diametro verticale per mezzo giro e passa per ogni punto dello spazio. */
+let demo = null;
+const DEMO_STEP_MS = 5000;                               // durata di ogni fase in riproduzione
+const DEMO_TEXT = [
+  '1. Il grafico, disegnato in piedi sulla retta che parte dal protone. Abbassandosi, la sua altezza diventa luminosità lungo la retta: più alto il valore, più luminoso il punto.',
+  '2. La retta gira nel piano attorno al protone. Ogni punto del piano prende il valore della sua distanza dal protone: si forma un disco ad anelli.',
+  '3. Il disco gira attorno al suo asse verticale. In mezzo giro passa per ogni punto dello spazio, e ogni punto ha il valore della sua distanza: è la nuvola 3D.',
+  'Fatto: ogni punto dello spazio ha il valore del grafico alla sua distanza. Chiudi per tornare alla nuvola.',
+];
+function demoColor(r) {                                  // [r, g, b, a] per la distanza r
+  const v = gVal(r), mag = Math.sqrt(Math.min(1, gMode === 'dens' ? v : Math.abs(v)));
+  const c = orb.iso ? COL_NEUTRAL : (orb.R(r) / gNorm) >= 0 ? COL_PLUS : COL_MINUS;
+  return [c[0], c[1], c[2], mag];
+}
+function buildDemoImages(Rd) {                           // disco ad anelli pre-calcolato (il disegno resta fluido)
+  const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d'), im = g.createImageData(S, S), table = [];
+  for (let k = 0; k <= 1024; k++) table.push(demoColor(Rd * k / 1024));
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (x + 0.5) / (S / 2) - 1, dy = (y + 0.5) / (S / 2) - 1, d = Math.hypot(dx, dy), o = 4 * (y * S + x);
+    if (d > 1) { im.data[o + 3] = 0; continue; }
+    const c = table[Math.round(d * 1024)];
+    im.data[o] = c[0]; im.data[o + 1] = c[1]; im.data[o + 2] = c[2]; im.data[o + 3] = Math.round(255 * c[3]);
+  }
+  g.putImageData(im, 0, 0);
+  return { disk: cv, table, Rd };
+}
+function startDemo() {
+  if (!(st.l === 0 || orb.iso)) return;
+  demo = { p: 0, playing: false, last: 0, img: buildDemoImages(orb.r99 * 1.15) };
+  togglePanel(graphPanel, $('graphBtn'), false);
+  $('demoBar').hidden = false;
+  syncDemo(); requestFrame();
+}
+function endDemo() { demo = null; $('demoBar').hidden = true; requestFrame(); }
+function syncDemo() {
+  if (!demo) return;
+  $('demoSlider').value = Math.round(demo.p * 100);
+  $('demoText').textContent = DEMO_TEXT[demo.p >= 3 ? 3 : Math.floor(demo.p)];
+  $('demoPlay').textContent = demo.playing ? 'Pausa' : (demo.p >= 3 ? 'Da capo' : 'Avvia');
+  $('demoPrev').disabled = demo.p <= 0; $('demoNext').disabled = demo.p >= 3;
+}
+function demoAdvance(now) {                              // chiamata a ogni fotogramma
+  if (!demo || !demo.playing) return;
+  const dt = demo.last ? now - demo.last : 0; demo.last = now;
+  const stop = Math.min(3, Math.floor(demo.p + 1e-9) + 1);              // si ferma alla fine della fase
+  demo.p = Math.min(stop, demo.p + dt / DEMO_STEP_MS);
+  if (demo.p >= stop - 1e-9) { demo.p = stop; demo.playing = false; }
+  syncDemo();
+}
+$('demoSlider').addEventListener('input', e => { if (!demo) return; demo.playing = false; demo.p = e.target.value / 100; syncDemo(); requestFrame(); });
+$('demoPlay').addEventListener('click', () => { if (!demo) return; if (demo.p >= 3) demo.p = 0; demo.playing = !demo.playing; demo.last = 0; syncDemo(); requestFrame(); });
+$('demoNext').addEventListener('click', () => { if (!demo) return; demo.playing = false; demo.p = Math.min(3, Math.floor(demo.p + 1e-9) + 1); syncDemo(); requestFrame(); });
+$('demoPrev').addEventListener('click', () => { if (!demo) return; demo.playing = false; demo.p = Math.max(0, Math.ceil(demo.p - 1e-9) - 1); syncDemo(); requestFrame(); });
+$('demoClose').addEventListener('click', endDemo);
+/* disco del piano (e1, e2) visto dalla vista corrente, eventualmente solo lo spicchio tra gli angoli 0 e phi */
+function drawDemoDisk(cx, cy, ppm, e1, e2, phi, alpha) {
+  const b = basis(), Rd = demo.img.Rd * ppm;
+  const a = dot3(e1, b.u) * Rd, bb = -dot3(e1, b.v) * Rd, c = dot3(e2, b.u) * Rd, d = -dot3(e2, b.v) * Rd;
+  if (Math.abs(a * d - bb * c) < 0.5) return;
+  ctx.save();
+  ctx.setTransform(DPR * a, DPR * bb, DPR * c, DPR * d, DPR * cx, DPR * cy);   // il disco unitario va nel piano giusto
+  if (phi < 2 * Math.PI - 1e-6) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1.01, 0, phi); ctx.closePath(); ctx.clip(); }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(demo.img.disk, -1, -1, 2, 2);
+  ctx.restore();
+}
+function drawDemo(cx, cy, ppm) {
+  const b = basis(), Rd = demo.img.Rd, p = demo.p, sm = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
+  const P = v => [cx + dot3(v, b.u) * ppm, cy - dot3(v, b.v) * ppm];
+  const X1 = [1, 0, 0], Y1 = [0, 1, 0];
+  const ray = (dir, alpha) => {                          // retta luminosa: colori del grafico lungo la distanza
+    const N = 160;
+    ctx.save(); ctx.lineWidth = 5; ctx.lineCap = 'butt';
+    for (let i = 0; i < N; i++) {
+      const c = demo.img.table[Math.round((i + 0.5) / N * 1024)];
+      const p0 = P(dir.map(x => x * Rd * i / N)), p1 = P(dir.map(x => x * Rd * (i + 1) / N));
+      ctx.strokeStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (c[3] * alpha).toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+    }
+    ctx.restore();
+  };
+  if (p < 1) {
+    const s = sm(p), H = 0.45 * Rd;                     // altezza del grafico in piedi sulla retta
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+    const a0 = P([0, 0, 0]), a1 = P(X1.map(x => x * Rd)); ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i = 0; i <= 240; i++) {
+      const r = Rd * i / 240, q = P([r, gVal(r) * H * (1 - s), 0]);
+      if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]);
+    }
+    ctx.stroke(); ctx.restore();
+    ray(X1, s);
+    return;
+  }
+  if (p < 2) {
+    const phi = (p - 1) * 2 * Math.PI;
+    drawDemoDisk(cx, cy, ppm, X1, Y1, phi, 0.95);
+    ray([Math.cos(phi), Math.sin(phi), 0], 1);
+    return;
+  }
+  const th = (p - 2) * Math.PI, dTh = Math.PI / 90;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k * dTh < th; k++) {                  // la scia: i dischi già passati, leggeri, si sommano in volume
+    const a = k * dTh;
+    drawDemoDisk(cx, cy, ppm, [Math.cos(a), 0, -Math.sin(a)], Y1, 2 * Math.PI, 0.05);
+  }
+  ctx.restore();
+  drawDemoDisk(cx, cy, ppm, [Math.cos(th), 0, -Math.sin(th)], Y1, 2 * Math.PI, p >= 3 ? 0.35 : 0.9);
+}
+
+/* ---------- sfera della distanza scelta: resta anche chiudendo il grafico, si toglie con il suo pulsante ---------- */
+function syncSphereChip() {
+  const on = gSphere && gCursor !== null && !demo;
+  $('sphereChip').hidden = !on;
+  if (on) $('sphereChip').textContent = 'Sfera ' + (gCursor >= 1 ? formatNumber(+gCursor.toPrecision(4)) + ' pm' : formatNumber(+(gCursor * 1e3).toPrecision(4)) + ' fm') + '   ✕';
+}
+$('sphereChip').addEventListener('click', () => { gCursor = null; drawGraph(); syncSphereChip(); requestFrame(); });
+
+/* ---------- disegno complessivo ---------- */
+function draw() {
+  if (!orb) return;
+  const ppm = pxPerPm(), { cx, cy } = nucleusScreen(ppm), r99px = orb.r99 * ppm;
+  const useGL = gl && (st.modes.cubes || st.modes.surface) && !demo;
+  glc.style.visibility = useGL ? 'visible' : 'hidden';
+  pcv.style.visibility = st.modes.points && !demo ? 'visible' : 'hidden';
+  if (useGL) { setGLScale(st.modes.cubes && interacting() ? 0.75 : Math.min(DPR, 1.5)); if (st.modes.cubes && interacting()) fullPending = true; drawGL(cx, cy, ppm); }
+  if (st.modes.points && !demo) drawPoints(cx, cy, ppm);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, Wd, Hd);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (demo) drawDemo(cx, cy, ppm);
+  if (settings.axes) drawAxes(cx, cy, r99px, false);
+  if (settings.proton) drawProton(cx, cy, ppm);
+  if (settings.axes) drawAxes(cx, cy, r99px, true);
+  if (!demo && gSphere && gCursor !== null) drawSelSphere(cx, cy, ppm, gCursor);
+  syncSphereChip();
+  if (settings.map) drawMap(cx, cy, r99px);
+  if (settings.ruler) drawRuler(ppm);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  updateCounter(); updateStatus();
+  $('reset').disabled = !rotAnim && Math.abs(Math.abs(Q[0] * Q0[0] + Q[1] * Q0[1] + Q[2] * Q0[2] + Q[3] * Q0[3]) - 1) < 1e-12;
+  $('in').disabled = logS >= zoomMax - 1e-9; $('out').disabled = logS <= 1e-9;
+}
+/* ---------- testi ---------- */
+const LETTERS = 'spdfgh';
+const REAL_NAMES = { '1,0': 'z', '1,1': 'x', '1,-1': 'y', '2,0': 'z²', '2,1': 'xz', '2,-1': 'yz', '2,2': 'x²−y²', '2,-2': 'xy',
+  '3,0': 'z³', '3,1': 'xz²', '3,-1': 'yz²', '3,2': 'z(x²−y²)', '3,-2': 'xyz', '3,3': 'x(x²−3y²)', '3,-3': 'y(3x²−y²)' };
+/* nome della forma nello spazio: quello dei libri (p x, d xy, …) fino a f; per g e h, "forma k di 2l+1" */
+function shapeName(l, m, html) {
+  if (l === 0) return 's';
+  const sub = REAL_NAMES[l + ',' + m];
+  if (sub) return html ? LETTERS[l] + '<sub>' + sub + '</sub>' : LETTERS[l] + ' ' + sub;
+  return 'forma ' + (m + l + 1) + ' di ' + (2 * l + 1);
+}
+function orbitalName(short) {
+  const b = st.n + LETTERS[st.l]; if (st.l === 0) return b;
+  if (orb && orb.iso) return b + (short ? ' senza dir.' : ', senza direzione');
+  const sub = REAL_NAMES[st.l + ',' + st.m];
+  return sub ? b + '<sub>' + sub + '</sub>' : b + ', ' + shapeName(st.l, st.m, true);
+}
+function formatDistance(pm) {
+  if (pm >= 1) return formatNumber(+pm.toPrecision(pm >= 100 ? 3 : 2)) + ' pm';
+  return formatNumber(+(pm * 1e3).toPrecision(2)) + ' fm';
+}
+function updateCounter() {
+  const el = $('counter'); el.hidden = !settings.counter;
+  const v = Math.pow(10, logS), r = Math.round(logS);
+  el.textContent = '×' + (Math.abs(logS - r) < 1e-6 ? formatNumber(Math.pow(10, r)) : formatNumber(+v.toPrecision(2)));
+}
+function updateStatus() {
+  $('stateName').hidden = !settings.name; $('stateName').innerHTML = orbitalName(true);
+  $('legend').hidden = !settings.legend;
+  $('legendSign').hidden = !!(orb && orb.iso); $('legendIso').hidden = !(orb && orb.iso);
+  const lines = [];
+  if (st.modes.points) lines.push(!pts ? 'Pallini: estrazione…' : 'Pallini ' + formatNumber(Math.round(onScreenCount)) + ' / ' + formatNumber(pts.N));
+  if ((st.modes.cubes || st.modes.surface) && !gl) lines.push('Cubetti e superficie: serve WebGL2');
+  else {
+    if (st.modes.cubes) lines.push(voxJob ? 'Cubetti: calcolo ' + Math.round(100 * (1 - voxJob.todo / voxJob.total)) + '%'
+      : vox ? 'Cubetti ' + formatNumber(vox.N) + '³ da ' + formatNumber(vox.L) + ' pm' : '');
+    if (st.modes.surface) lines.push(surfJob ? 'Superficie: calcolo…' : surf ? 'Superficie ' + st.X + '%, opacità ' + st.A + '%' : '');
+  }
+  const flags = [];
+  const sh = orb && (st.modes.points || st.modes.cubes) ? slabHalf(pxPerPm()) : Infinity;
+  if (isFinite(sh)) flags.push('prof. ±' + formatDistance(sh));
+  if (st.cut) flags.push('taglio');
+  if (!st.lock) flags.push('vista libera');
+  if (hideMask) { let c = 0; for (let i = 0; i < 32; i++) if ((hideMask >>> i) & 1) c++; flags.push('nascoste ' + c + '/' + orb.nDomains); }
+  if (hideTool) flags.push('tocca una regione');
+  if (flags.length) lines.push(flags.join(', '));
+  $('status').innerHTML = lines.filter(Boolean).map(s => '<div>' + s + '</div>').join('');
+}
+
+/* ---------- animazioni ---------- */
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+function tick() {
+  raf = 0; const now = performance.now();
+  demoAdvance(now);
+  if (zoomAnim) {
+    const k = Math.min(1, (now - zoomAnim.t0) / zoomAnim.dur), b = basis();
+    const P = zoomAnim.anchor ? worldAt(zoomAnim.sx, zoomAnim.sy, pxPerPm(), b) : null;
+    logS = zoomAnim.from + (zoomAnim.to - zoomAnim.from) * k; exposureDirty = true;
+    if (P) anchor(P, zoomAnim.sx, zoomAnim.sy, pxPerPm(), b);
+    if (k >= 1) { logS = zoomAnim.to; zoomAnim = null; }
+  }
+  if (panAnim) { const k = Math.min(1, (now - panAnim.t0) / panAnim.dur), e = easeOut(k); panX = panAnim.x * (1 - e); panY = panAnim.y * (1 - e); if (k >= 1) { panX = panY = 0; panAnim = null; } }
+  if (focusAnim) { const k = Math.min(1, (now - focusAnim.t0) / focusAnim.dur), e = easeOut(k); F = focusAnim.from.map(v => v * (1 - e)); if (k >= 1) { F = [0, 0, 0]; focusAnim = null; } }
+  if (rotAnim) { const k = Math.min(1, (now - rotAnim.t0) / rotAnim.dur); Q = qslerp(rotAnim.from, Q0, easeOut(k)); if (k >= 1) { Q = Q0.slice(); rotAnim = null; } }
+  draw();
+  if (zoomAnim || panAnim || rotAnim || focusAnim || (demo && demo.playing)) raf = requestAnimationFrame(tick);
+  else if (fullPending && pointers.size === 0) { fullPending = false; raf = requestAnimationFrame(tick); }
+}
+function requestFrame() { if (!raf) raf = requestAnimationFrame(tick); }
+/* + e −: esattamente ×10 o ÷10 dal valore attuale, a velocità costante (2 s per ogni ×10), attorno al centro dello schermo */
+function zoomBy(dec) {
+  const to = Math.max(0, Math.min(zoomMax, (zoomAnim ? zoomAnim.to : logS) + dec));
+  zoomAnim = { from: logS, to, t0: performance.now(), dur: Math.max(1, Math.abs(to - logS) * MS_PER_DECADE),
+               anchor: !st.lock, sx: W / 2, sy: H / 2 };
+  requestFrame();
+}
+function returnToCenter() { if (panX || panY) { panAnim = { x: panX, y: panY, t0: performance.now(), dur: 320 }; requestFrame(); } }
+function resetView() { rotAnim = { from: Q.slice(), t0: performance.now(), dur: 500 }; requestFrame(); }
+
+/* Nascondere una regione: dal punto toccato si segue la linea di vista dal davanti verso il dietro; la prima regione
+   che si incontra con densità sopra la soglia della superficie (se non è già nascosta, tagliata o fuori dallo
+   spessore visibile) è quella che si nasconde. È "il lobo che hai sotto il dito". */
+function pickRegion(sx, sy) {
+  const ppm = pxPerPm(), b = basis(), Pw = worldAt(sx, sy, ppm, b), Fw = dot3(F, b.w);
+  const t = surf ? surf.t : orb.tPick, R = orb.rDom, ds = R / 1500;
+  const sh = (st.modes.points || st.modes.cubes) ? slabHalf(ppm) : Infinity;
+  for (let s = R - Fw; s >= -R - Fw; s -= ds) {                 // s = profondità rispetto al punto di mira (verso chi guarda = positiva)
+    if (Math.abs(s) > sh) continue;
+    const X = Pw[0] + b.w[0] * s, Y = Pw[1] + b.w[1] * s, Z = Pw[2] + b.w[2] * s;
+    if (st.cut && X * CUT_N[0] + Y * CUT_N[1] + Z * CUT_N[2] > 0) continue;
+    const v = orb.psi(X, Y, Z);
+    if (v * v <= t) continue;
+    const d = orb.domainOf(X, Y, Z);
+    if ((hideMask >>> d) & 1) continue;
+    return d;
+  }
+  return -1;
+}
+function setHidden(mask) { hideMask = mask >>> 0; syncPanels(); requestFrame(); }
+
+/* ---------- 9. Gesti ----------
+   Tutto è definito sullo schermo, quindi funziona uguale a ogni ingrandimento: il contenuto segue le dita.
+   Un dito: ruota attorno al centro dello schermo (orizzontale = attorno all'asse verticale dello schermo,
+   verticale = attorno a quello orizzontale; un diametro trascinato = mezzo giro), senza inerzia.
+   Due dita: allargare/stringere = zoom, ruotarle = rotazione nel piano dello schermo, spostarle = spostamento.
+   Fisso al centro: zoom e rotazione attorno al nucleo, lo spostamento torna indietro al rilascio.
+   Vista libera: zoom e rotazione attorno al punto tra le dita, lo spostamento resta. */
+const pointers = new Map();
+let mode = 'none', last = null, two = null, tap = null, hideTool = false;
+const pts2 = () => [...pointers.values()];
+cnv.addEventListener('pointerdown', e => {
+  closePanels();
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  try { cnv.setPointerCapture(e.pointerId); } catch (err) {}
+  rotAnim = null; focusAnim = null;
+  if (pointers.size === 1) {
+    if (e.pointerType === 'mouse' && (e.shiftKey || e.button === 2)) { mode = 'mousepan'; panAnim = null; last = { x: e.clientX, y: e.clientY }; }
+    else { mode = 'rotate'; last = { x: e.clientX, y: e.clientY }; tap = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; }
+  } else if (pointers.size === 2) {
+    mode = 'two'; panAnim = null; zoomAnim = null;
+    const [a, b] = pts2();
+    two = { d: Math.hypot(b.x - a.x, b.y - a.y), ang: Math.atan2(b.y - a.y, b.x - a.x), m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  } else mode = 'wait';
+});
+cnv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (mode === 'rotate' && pointers.size === 1) {
+    if (tap && !tap.moved) { if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8) return; tap.moved = true; }   // sotto 8 pixel è un tocco, non una rotazione
+    const k = Math.PI / (2 * baseRadius()), dx = e.clientX - last.x, dy = e.clientY - last.y;
+    Q = qnorm(qmul(qmul(qaxis(1, 0, 0, dy * k), qaxis(0, 1, 0, dx * k)), Q));   // attorno al punto al centro dello schermo
+    last = { x: e.clientX, y: e.clientY }; requestFrame();
+  } else if (mode === 'two' && pointers.size === 2) {
+    const [a, b] = pts2(), d = Math.hypot(b.x - a.x, b.y - a.y), ang = Math.atan2(b.y - a.y, b.x - a.x), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const bOld = basis(), ppmOld = pxPerPm();
+    const pivotS = st.lock ? null : two.m;                                    // punto dello schermo che resta sotto le dita
+    const P = pivotS ? worldAt(pivotS.x, pivotS.y, ppmOld, bOld) : null;
+    if (two.d > 0 && d > 0) logS = Math.max(0, Math.min(zoomMax, logS + Math.log10(d / two.d)));
+    let dAng = ang - two.ang; if (dAng > Math.PI) dAng -= 2 * Math.PI; if (dAng < -Math.PI) dAng += 2 * Math.PI;
+    Q = qnorm(qmul(qaxis(0, 0, 1, -dAng), Q));                               // il contenuto gira con le dita
+    if (st.lock) { panX += m.x - two.m.x; panY += m.y - two.m.y; }
+    else anchor(P, m.x, m.y, pxPerPm(), basis());
+    two = { d, ang, m }; exposureDirty = true; requestFrame();
+  } else if (mode === 'mousepan' && pointers.size === 1) {
+    const dx = e.clientX - last.x, dy = e.clientY - last.y; last = { x: e.clientX, y: e.clientY };
+    if (st.lock) { panX += dx; panY += dy; } else { const b = basis(), ppm = pxPerPm(); F = F.map((v, i) => v - (dx * b.u[i] - dy * b.v[i]) / ppm); }
+    requestFrame();
+  }
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) {
+    if (mode === 'rotate' && tap && !tap.moved && performance.now() - tap.t < 500 && hideTool) {
+      const d = pickRegion(tap.x, tap.y);
+      if (d >= 0) setHidden(hideMask | (1 << d));
+    }
+    if (st.lock && (mode === 'two' || mode === 'mousepan' || mode === 'wait')) returnToCenter();
+    mode = 'none'; tap = null; if (fullPending) requestFrame();
+  }
+  else if (mode === 'two') mode = 'wait';
+  if (pointers.size > 0 && tap) tap.moved = true;
+}
+cnv.addEventListener('pointerup', endPointer); cnv.addEventListener('pointercancel', endPointer); cnv.addEventListener('lostpointercapture', endPointer);
+cnv.addEventListener('contextmenu', e => e.preventDefault());
+cnv.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+cnv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const b = basis(), P = st.lock ? null : worldAt(e.clientX, e.clientY, pxPerPm(), b);
+  logS = Math.max(0, Math.min(zoomMax, logS - e.deltaY * 0.002)); exposureDirty = true;
+  if (P) anchor(P, e.clientX, e.clientY, pxPerPm(), b);
+  requestFrame();
+}, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* ---------- 10. Pannelli e avvio ---------- */
+const panel = $('panel'), statePanel = $('statePanel');
+function togglePanel(p, btn, open) { if (open) { closePanels(); p.hidden = false; btn.setAttribute('aria-expanded', 'true'); } else { p.hidden = true; btn.setAttribute('aria-expanded', 'false'); } }
+function closePanels() { togglePanel(panel, $('settings'), false); togglePanel(statePanel, $('stateBtn'), false); togglePanel(infoPanel, $('infoBtn'), false); togglePanel(graphPanel, $('graphBtn'), false); }
+$('settings').addEventListener('click', () => togglePanel(panel, $('settings'), panel.hidden));
+$('stateBtn').addEventListener('click', () => togglePanel(statePanel, $('stateBtn'), statePanel.hidden));
+const infoPanel = $('infoPanel');
+document.addEventListener('pointerdown', e => {                // toccando fuori da un pannello aperto, si chiude
+  const t = e.target;
+  if (t.closest('.panel') || t.closest('#settings') || t.closest('#stateBtn') || t.closest('#infoBtn') || t.closest('#graphBtn') || t.closest('#sphereChip')) return;
+  closePanels();
+}, true);
+/* ---------- frecce: stato più alto o più basso, in ordine di energia (tempo fermo) ----------
+   Nell'idrogeno gli stati con lo stesso livello hanno praticamente la stessa energia: dentro un livello si va da s a p, d, … */
+const STATE_ORDER = [];
+for (let n = 1; n <= 6; n++) for (let l = 0; l < n; l++) STATE_ORDER.push([n, l]);
+function stateIndex() { return STATE_ORDER.findIndex(([n, l]) => n === st.n && l === st.l); }
+function stepState(d) {
+  const i = stateIndex() + d;
+  if (i < 0 || i >= STATE_ORDER.length) return;
+  const [n, l] = STATE_ORDER[i];
+  st.l = l; st.m = Math.max(-l, Math.min(l, st.m));
+  setParam('n', n);
+}
+$('stUp').addEventListener('click', () => stepState(1));
+$('stDown').addEventListener('click', () => stepState(-1));
+
+/* ---------- grafico dell'onda in funzione della distanza dal protone ----------
+   Lungo una qualsiasi retta che parte dal protone l'onda ha sempre la stessa forma, data dalla parte che dipende solo
+   dalla distanza: cambia solo l'altezza, e in alcune direzioni il segno. In verticale c'è l'onda divisa per il suo
+   valore massimo (quindi va da −1 a 1), calcolata con la stessa formula della vista 3D in ogni punto disegnato.
+   Gesti: un dito trascina, due dita ingrandiscono (in orizzontale l'asse delle distanze, in verticale quello dell'onda),
+   un tocco legge il valore in quel punto, due tocchi rapidi tornano alla vista intera. */
+const graphPanel = $('graphPanel'), gcv = $('graphCv'), gctx = gcv.getContext('2d');
+let gView = null, gCursor = null, gNorm = 1, gKey = '', gMode = 'psi', gSphere = true;
+/* valore disegnato: l'onda ψ (con il segno) oppure la densità di probabilità |ψ|², entrambe divise per il loro massimo */
+const gVal = r => { const v = orb.R(r) / gNorm; return gMode === 'dens' ? v * v : v; };
+$('graphBtn').addEventListener('click', () => { togglePanel(graphPanel, $('graphBtn'), graphPanel.hidden); if (!graphPanel.hidden) { sizeGraph(); drawGraph(); } requestFrame(); });
+$('gBuildBtn').addEventListener('click', startDemo);
+function sizeGraph() {                                   // il pannello usa lo spazio libero tra le scritte in alto e la barra
+  const free = window.innerHeight - 62 - 96 - 16;        // barra in basso, scritte in alto, margini
+  const other = graphPanel.offsetHeight - gcv.offsetHeight;                  // pulsanti, didascalia, margini
+  gcv.style.height = Math.max(200, Math.min(300, free - other)) + 'px';
+}
+function graphFrame() {                               // margini del riquadro del grafico
+  const cw = gcv.clientWidth, ch = gcv.clientHeight;
+  return { cw, ch, L: 40, R: cw - 8, T: 30, B: ch - 32 };
+}
+function graphDefaults() {
+  let mx = 0;
+  for (let i = 0; i <= 4000; i++) { const v = Math.abs(orb.R(orb.rTail * i / 4000)); if (v > mx) mx = v; }
+  gNorm = (mx || 1) * Math.sign(orb.R(orb.r99 * 1e-4) || 1);         // la parte vicina al protone è positiva
+  const x1 = orb.r99 * 1.15;
+  let hi = 0, lo = 0;
+  for (let i = 0; i <= 2000; i++) { const v = gVal(x1 * i / 2000); hi = Math.max(hi, v); lo = Math.min(lo, v); }
+  const pad = 0.06 * (hi - lo || 1);
+  return { x0: 0, x1, y0: lo < 0 ? lo - pad : 0, y1: hi + pad };       // senza valori negativi lo zero sta sull'asse
+}
+function niceStep(span, target) {
+  const raw = span / target, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 5, 10].map(s => s * p).find(s => s >= raw) || 10 * p;
+}
+function fmtTick(v, step) {
+  const dec = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return formatNumber(+v.toFixed(Math.min(dec, 6)), Math.min(dec, 6));
+}
+function drawGraph() {
+  if (graphPanel.hidden || !orb) return;
+  const key = st.n + ',' + st.l + ',' + st.m + ',' + st.free + ',' + gMode;
+  if (key !== gKey || !gView) { const keepCursor = gKey.split(',').slice(0, 4).join() === key.split(',').slice(0, 4).join(); gView = graphDefaults(); if (!keepCursor) gCursor = null; gKey = key; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), F_ = graphFrame(), { cw, ch, L, R, T, B } = F_;
+  if (gcv.width !== Math.round(cw * dpr) || gcv.height !== Math.round(ch * dpr)) { gcv.width = Math.round(cw * dpr); gcv.height = Math.round(ch * dpr); }
+  const g = gctx; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cw, ch);
+  const { x0, x1, y0, y1 } = gView;
+  const fm = (x1 - x0) < 3;                                          // intervallo sotto 3 pm: distanze in femtometri
+  const X = r => L + (r - x0) / (x1 - x0) * (R - L), Y = v => B - (v - y0) / (y1 - y0) * (B - T);
+  g.font = '10.5px system-ui, sans-serif';
+  /* griglia e tacche */
+  const sx = niceStep((x1 - x0) * (fm ? 1e3 : 1), 5), sy = niceStep(y1 - y0, 4);
+  g.strokeStyle = '#262626'; g.lineWidth = 1; g.fillStyle = '#a8a8a8';
+  g.textAlign = 'center';
+  for (let v = Math.ceil(x0 * (fm ? 1e3 : 1) / sx) * sx; v <= x1 * (fm ? 1e3 : 1) + 1e-9; v += sx) {
+    const x = Math.round(X(fm ? v / 1e3 : v)) + 0.5;
+    g.beginPath(); g.moveTo(x, T); g.lineTo(x, B); g.stroke();
+    g.fillText(fmtTick(v, sx), x, B + 13);
+  }
+  g.textAlign = 'right';
+  for (let v = Math.ceil(y0 / sy) * sy; v <= y1 + 1e-12; v += sy) {
+    const y = Math.round(Y(v)) + 0.5;
+    g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke();
+    g.fillText(fmtTick(Math.abs(v) < 1e-12 ? 0 : v, sy), L - 5, y + 3.5);
+  }
+  /* assi */
+  g.strokeStyle = '#8a8a8a'; g.beginPath(); g.moveTo(L + 0.5, T); g.lineTo(L + 0.5, B); g.lineTo(R, B + 0.5); g.stroke();
+  if (y0 < 0 && y1 > 0) { g.strokeStyle = '#6e6e6e'; g.beginPath(); g.moveTo(L, Math.round(Y(0)) + 0.5); g.lineTo(R, Math.round(Y(0)) + 0.5); g.stroke(); }
+  g.fillStyle = '#c8c8c8'; g.textAlign = 'right'; g.fillText('distanza dal protone (' + (fm ? 'fm' : 'pm') + ')', R, B + 27);
+  g.textAlign = 'left'; g.fillText(gMode === 'dens' ? 'densità di probabilità |ψ|² (1 = massimo)' : 'onda ψ (1 = massimo)', 2, 11);
+  /* curva, calcolata a ogni pixel */
+  const K = Math.max(200, Math.round((R - L) * 2)), rs = [], vs = [];
+  for (let i = 0; i <= K; i++) { const r = x0 + (x1 - x0) * i / K; rs.push(r); vs.push(r < 0 ? NaN : gVal(r)); }
+  g.save(); g.beginPath(); g.rect(L + 1, T, R - L - 1, B - T); g.clip();
+  const cP = 'rgb(' + colPlus().join(',') + ')', cN = 'rgb(' + colMinus().join(',') + ')', y00 = Y(0);
+  g.globalAlpha = 0.3;
+  for (let i = 0; i < K; i++) {
+    if (isNaN(vs[i]) || isNaN(vs[i + 1])) continue;
+    g.fillStyle = (vs[i] + vs[i + 1]) >= 0 ? cP : cN;
+    g.beginPath(); g.moveTo(X(rs[i]), y00); g.lineTo(X(rs[i]), Y(vs[i])); g.lineTo(X(rs[i + 1]), Y(vs[i + 1])); g.lineTo(X(rs[i + 1]), y00); g.closePath(); g.fill();
+  }
+  g.globalAlpha = 1; g.strokeStyle = '#ededed'; g.lineWidth = 1.5; g.beginPath();
+  let started = false;
+  vs.forEach((v, i) => { if (isNaN(v)) return; const x = X(rs[i]), y = Y(v); if (started) g.lineTo(x, y); else { g.moveTo(x, y); started = true; } });
+  g.stroke();
+  /* zeri */
+  g.strokeStyle = '#d8d8d8'; g.lineWidth = 1;
+  for (const r0 of orb.coef.radNodes) if (r0 >= x0 && r0 <= x1) { g.beginPath(); g.arc(X(r0), y00, 3, 0, 2 * Math.PI); g.stroke(); }
+  /* cursore di lettura */
+  if (gCursor !== null && gCursor >= x0 && gCursor <= x1) {
+    const v = gVal(gCursor), x = X(gCursor);
+    g.strokeStyle = '#6aa4ff'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x + 0.5, T); g.lineTo(x + 0.5, B); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#6aa4ff'; g.beginPath(); g.arc(x, Y(v), 3.5, 0, 2 * Math.PI); g.fill();
+  }
+  g.restore();
+  if (gCursor !== null) {
+    const v = gVal(gCursor), zero = orb.coef.radNodes.find(z => Math.abs(z - gCursor) < 1e-9 * Math.max(1, z));
+    const d = fm ? formatNumber(+(gCursor * 1e3).toPrecision(5)) + ' fm' : formatNumber(+gCursor.toPrecision(5)) + ' pm';
+    const t = zero !== undefined ? 'zero a ' + d : d + ':  ' + formatNumber(+v.toPrecision(3));
+    g.fillStyle = '#6aa4ff'; g.textAlign = 'right'; g.fillText(t, R, 24);
+  }
+  /* didascalia */
+  const sym = st.l === 0 || orb.iso;                // il valore dipende solo dalla distanza?
+  let cap = gMode === 'dens'
+    ? 'Densità di probabilità: quanto è probabile trovare l\'elettrone in un punto a quella distanza. '
+    : 'Onda: il valore con il segno; la probabilità è il suo quadrato. ';
+  if (st.l === 0) cap += 'Uguale in ogni direzione.';
+  else if (orb.iso) cap += 'Senza direzione: uguale in ogni direzione (media degli orientamenti).';
+  else cap += 'Con una direzione: lungo ogni retta stessa forma, ma l\'altezza cambia con la direzione.';
+  const zs = orb.coef.radNodes;
+  let z = zs.length ? 'Zero a ' + zs.map(v => formatNumber(+v.toPrecision(4))).join('; ') + ' pm: i gusci vuoti del 3D.' : 'Mai zero lungo la retta.';
+  if (st.l > 0) z += ' Zero anche sul protone.';
+  $('graphCap').innerHTML = cap + '<br>' + z + '<br>Tocca: leggi un valore' + (gSphere ? ' e vedi la sfera di quella distanza' : '') + '. Trascina e allarga le dita: esplora. Due tocchi: vista intera.';
+  syncSphereChip();
+  $('gBuildBtn').disabled = !sym;
+  graphPanel.querySelectorAll('#gModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === gMode)));
+  $('gSphereBtn').setAttribute('aria-pressed', String(gSphere));
+}
+graphPanel.querySelectorAll('#gModeSeg button').forEach(b => b.addEventListener('click', () => { gMode = b.dataset.g; drawGraph(); }));
+$('gSphereBtn').addEventListener('click', () => { gSphere = !gSphere; drawGraph(); requestFrame(); });
+/* gesti sul grafico */
+const gPtr = new Map();
+let gStart = null, gTapT = 0, gTap = null;
+function gLocal(e) { const r = gcv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+gcv.addEventListener('pointerdown', e => {
+  gcv.setPointerCapture(e.pointerId); gPtr.set(e.pointerId, gLocal(e));
+  gStart = { view: Object.assign({}, gView), pts: [...gPtr.values()].map(p => ({ ...p })) };
+  if (gPtr.size === 1) gTap = { ...gLocal(e), t: performance.now(), moved: false }; else gTap = null;
+});
+gcv.addEventListener('pointermove', e => {
+  if (!gPtr.has(e.pointerId) || !gStart) return;
+  gPtr.set(e.pointerId, gLocal(e));
+  const { L, R, T, B } = graphFrame(), v = gStart.view, pts = [...gPtr.values()];
+  const kx = (v.x1 - v.x0) / (R - L), ky = (v.y1 - v.y0) / (B - T);
+  if (pts.length === 1 && gStart.pts.length === 1) {
+    const dx = pts[0].x - gStart.pts[0].x, dy = pts[0].y - gStart.pts[0].y;
+    if (gTap && Math.hypot(dx, dy) > 6) gTap.moved = true;
+    if (gTap && !gTap.moved) return;
+    gView = { x0: v.x0 - dx * kx, x1: v.x1 - dx * kx, y0: v.y0 + dy * ky, y1: v.y1 + dy * ky };
+  } else if (pts.length === 2 && gStart.pts.length === 2) {
+    const a0 = gStart.pts[0], b0 = gStart.pts[1], a = pts[0], b = pts[1];
+    const dx0 = Math.abs(b0.x - a0.x), dy0 = Math.abs(b0.y - a0.y), dx1 = Math.abs(b.x - a.x), dy1 = Math.abs(b.y - a.y);
+    const fx = dx0 > 30 ? Math.max(0.02, dx1 / dx0) : 1, fy = dy0 > 30 ? Math.max(0.02, dy1 / dy0) : 1;
+    const mx0 = (a0.x + b0.x) / 2, my0 = (a0.y + b0.y) / 2, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const cx = v.x0 + (mx0 - L) * kx, cy = v.y1 - (my0 - T) * ky;         // punto del grafico sotto le dita all'inizio
+    const nx = (v.x1 - v.x0) / fx, ny = (v.y1 - v.y0) / fy;
+    const x0 = cx - (mx - L) / (R - L) * nx, y1 = cy + (my - T) / (B - T) * ny;
+    gView = { x0, x1: x0 + nx, y0: y1 - ny, y1 };
+  }
+  if (gView.x0 < 0) { gView.x1 -= gView.x0; gView.x0 = 0; }
+  drawGraph();
+});
+function gEnd(e) {
+  if (!gPtr.has(e.pointerId)) return;
+  gPtr.delete(e.pointerId);
+  if (gPtr.size === 0) {
+    if (gTap && !gTap.moved && performance.now() - gTap.t < 350) {
+      const now = performance.now();
+      if (now - gTapT < 320) { gView = graphDefaults(); gCursor = null; gTapT = 0; requestFrame(); }   // due tocchi: vista intera
+      else {
+        gTapT = now;
+        const { L, R } = graphFrame(), v = gView, r = v.x0 + (gTap.x - L) / (R - L) * (v.x1 - v.x0);
+        const pxPer = (R - L) / (v.x1 - v.x0);
+        const near = orb.coef.radNodes.find(z => Math.abs(z - r) * pxPer < 8);             // vicino a uno zero: si aggancia
+        gCursor = near !== undefined ? near : Math.max(0, r);
+        requestFrame();
+      }
+    }
+    gTap = null; gStart = null;
+  } else gStart = { view: Object.assign({}, gView), pts: [...gPtr.values()].map(p => ({ ...p })) };
+  drawGraph();
+}
+gcv.addEventListener('pointerup', gEnd); gcv.addEventListener('pointercancel', gEnd);
+window.addEventListener('resize', () => { if (!graphPanel.hidden) { sizeGraph(); drawGraph(); } });
+$('infoBtn').addEventListener('click', () => { updateInfoPanel(); togglePanel(infoPanel, $('infoBtn'), infoPanel.hidden); });
+/* la riga delle distanze è calcolata per lo stato scelto */
+function updateInfoPanel() {
+  const f = v => formatNumber(+v.toPrecision(3)) + ' pm';
+  $('infoDist').innerHTML = '<b>Distanza dal protone (stato ' + orbitalName() + ').</b> La più frequente è ' + f(orb.rPeak) +
+    '. Metà delle misure cade entro ' + f(orb.rMedian) + ', e una su dieci oltre ' + f(orb.r90) + '.';
+}
+panel.querySelectorAll('.switch').forEach(s => s.addEventListener('click', () => { settings[s.dataset.key] = !settings[s.dataset.key]; save(); syncPanels(); draw(); }));
+$('cutSwitch').addEventListener('click', () => setParam('cut', !st.cut));
+$('dirSwitch').addEventListener('click', () => setParam('free', !st.free));
+$('lock').addEventListener('click', () => {
+  st.lock = !st.lock;
+  if (st.lock) { focusAnim = { from: F.slice(), t0: performance.now(), dur: 450 }; returnToCenter(); }
+  save(); syncPanels(); requestFrame();
+});
+const allowedL = () => L_STEPS.filter(L => PHYS.cellsPerSide(orb, L) <= PHYS.MAX_CELLS_PER_SIDE);
+const STEP = {
+  n: { get: () => st.n, show: v => String(v), list: () => [1, 2, 3, 4, 5, 6] },
+  l: { get: () => st.l, show: v => LETTERS[v], list: () => Array.from({ length: st.n }, (_, i) => i) },
+  m: { get: () => st.m, show: v => shapeName(st.l, v, false),
+       list: () => Array.from({ length: 2 * st.l + 1 }, (_, i) => i - st.l) },
+  N: { get: () => st.N, show: v => formatNumber(v), list: () => N_STEPS },
+  L: { get: () => st.L, show: v => formatNumber(v) + ' pm', list: allowedL },
+  X: { get: () => st.X, show: v => v + '%', list: () => X_STEPS },
+  A: { get: () => st.A, show: v => v + '%', list: () => A_STEPS },
+};
+const steppers = {};
+document.querySelectorAll('.stepper').forEach(el => {
+  const q = el.dataset.q;
+  el.innerHTML = '<button type="button" aria-label="diminuisci">−</button><output></output><button type="button" aria-label="aumenta">+</button>';
+  steppers[q] = { bm: el.children[0], out: el.children[1], bp: el.children[2] };
+  const move = d => { const L = STEP[q].list(), i = L.indexOf(STEP[q].get()); if (i + d >= 0 && i + d < L.length) setParam(q, L[i + d]); };
+  steppers[q].bm.addEventListener('click', () => move(-1)); steppers[q].bp.addEventListener('click', () => move(1));
+});
+/* le viste si accendono e si spengono indipendentemente; ne resta sempre almeno una */
+statePanel.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.mode, next = Object.assign({}, st.modes, { [k]: !st.modes[k] });
+  if (!next.points && !next.cubes && !next.surface) return;
+  setParam('modes', next);
+}));
+function syncPanels() {
+  panel.querySelectorAll('.switch').forEach(s => s.setAttribute('aria-checked', String(settings[s.dataset.key])));
+  $('cutSwitch').setAttribute('aria-checked', String(st.cut));
+  $('dirSwitch').setAttribute('aria-checked', String(!st.free));
+  $('dirRow').hidden = st.l === 0; $('orientRow').hidden = st.l === 0 || st.free;
+  if (typeof stateIndex === 'function') { const i = stateIndex(); $('stUp').disabled = i >= STATE_ORDER.length - 1; $('stDown').disabled = i <= 0; }
+  $('lock').setAttribute('aria-pressed', String(st.lock));
+  $('hide').setAttribute('aria-pressed', String(hideTool));
+  $('showAll').hidden = !hideMask;
+  $('lock').setAttribute('aria-label', st.lock ? 'Fisso al centro sul nucleo (tocca per la vista libera)' : 'Vista libera (tocca per fissare al centro)');
+  for (const q in steppers) {
+    const L = STEP[q].list(), i = L.indexOf(STEP[q].get());
+    steppers[q].out.textContent = STEP[q].show(STEP[q].get()); steppers[q].bm.disabled = i <= 0; steppers[q].bp.disabled = i < 0 || i >= L.length - 1;
+  }
+  statePanel.querySelectorAll('.row[data-for]').forEach(r => { r.hidden = !st.modes[r.dataset.for]; });
+  statePanel.querySelectorAll('#modeSeg button').forEach(b => { b.setAttribute('aria-pressed', String(!!st.modes[b.dataset.mode])); b.disabled = b.dataset.mode !== 'points' && !gl; });
+}
+function ensureData() {
+  if (st.modes.points && !pts && !queue.some(q => q.type === 'points')) requestPoints();
+  if (st.modes.cubes && gl && !vox && !voxJob) requestVoxels();
+  if (st.modes.surface && gl && !surf && !surfJob) requestSurface();
+}
+function setParam(q, v) {
+  if (q === 'L' && !allowedL().includes(v)) return;
+  st[q] = v;
+  if (q === 'n' || q === 'l' || q === 'm' || q === 'free') {
+    if (demo) endDemo();
+    st.l = Math.min(st.l, st.n - 1); st.m = Math.max(-st.l, Math.min(st.l, st.m));
+    loadOrbital(); pts = vox = surf = null; voxJob = surfJob = null; ver.points++; ver.cubes++; ver.surface++; queue = [];
+  } else if (q === 'N') { buildKernel(); pts = null; ver.points++; queue = queue.filter(t => t.type !== 'points'); }
+  else if (q === 'L') { vox = null; voxJob = null; ver.cubes++; queue = queue.filter(t => t.type !== 'slab'); }
+  else if (q === 'X') { surf = null; surfJob = null; ver.surface++; queue = queue.filter(t => t.type !== 'threshold' && t.type !== 'mesh'); }
+  else if (q === 'cut') { exposureDirty = true; if (vox) vox.k = cubeExposure(); }
+  ensureData(); save(); syncPanels(); if (!infoPanel.hidden) updateInfoPanel(); drawGraph(); draw();
+}
+function loadOrbital() {
+  orb = PHYS.makeOrbital(SYS_MSG, st.n, st.l, st.m, st.free);
+  const Ls = allowedL();
+  if (!Ls.includes(st.L)) st.L = Ls.reduce((best, L) => (Math.abs(PHYS.cellsPerSide(orb, L) - 101) < Math.abs(PHYS.cellsPerSide(orb, best) - 101) ? L : best), Ls[0]);
+  zoomMax = Math.log10(orb.r99 / SYSTEM.nucleus.rms);          // al massimo, il protone riempie lo schermo
+  orb.tPick = PHYS.surfaceThreshold(orb, 0.9, 40000);          // soglia della regione del 90%, per scegliere le regioni
+  hideMask = 0;
+  buildMini();
+  logS = 0; zoomAnim = null; F = [0, 0, 0]; panX = panY = 0;
+}
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 3); W = window.innerWidth; H = window.innerHeight;
+  Wd = Math.round(W * DPR); Hd = Math.round(H * DPR); cnv.width = Wd; cnv.height = Hd; pcv.width = Wd; pcv.height = Hd;
+  accP = new Float32Array(Wd * Hd); accN = new Float32Array(Wd * Hd);
+  img = pctx.createImageData(Wd, Hd); img32 = new Uint32Array(img.data.buffer);
+  GL_SCALE = 0; setGLScale(Math.min(DPR, 1.5));
+  buildKernel(); exposureDirty = true; draw();
+}
+$('reset').addEventListener('click', resetView);
+$('hide').addEventListener('click', () => { hideTool = !hideTool; syncPanels(); updateStatus(); });
+$('showAll').addEventListener('click', () => setHidden(0));
+$('in').addEventListener('click', () => zoomBy(1));
+$('out').addEventListener('click', () => zoomBy(-1));
+window.addEventListener('keydown', e => { if (e.key === '+' || e.key === '=') zoomBy(1); else if (e.key === '-' || e.key === '_') zoomBy(-1); else if (e.key === 'Escape') closePanels(); });
+window.addEventListener('resize', resize);
+try { if (!initGL()) gl = null; } catch (e) { gl = null; console.error(e); }
+if (!gl) st.modes = { points: true, cubes: false, surface: false };
+if (!A_STEPS.includes(st.A)) st.A = 100;
+st.l = Math.min(st.l, st.n - 1); st.m = Math.max(-st.l, Math.min(st.l, st.m));
+loadOrbital(); syncPanels(); resize(); ensureData();
+</script>
+</body></html>
